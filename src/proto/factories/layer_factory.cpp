@@ -25,18 +25,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/proto/factories.hpp"
+#include "lbann/utils/factory.hpp"
 #include "lbann/utils/peek_map.hpp"
 
 namespace lbann {
 namespace proto {
 namespace { // Anon
-#define LAYER_DEFAULT_BUILDER(KEY, NAME)                                      \
+#define LAYER_DEFAULT_BUILDER(KEY, NAME)                                \
   factory.register_builder(                                             \
     #KEY, &default_layer_builder<KEY, NAME##_layer<Layout, Device>>)
-#define LAYER_MESSAGE_BUILDER(KEY, NAME)                                      \
+#define LAYER_MESSAGE_BUILDER(KEY, NAME)                                \
   factory.register_builder(                                             \
     #KEY, &build_##NAME##_layer_from_protobuf<Layout, Device>)
-#define LAYER_SPECIAL_BUILDER(...) (void)
+#define LAYER_SPECIAL_BUILDER(...) (void) factory
 
 template <typename MsgT, typename LayerT>
 std::unique_ptr<Layer>
@@ -47,7 +48,7 @@ default_layer_builder(
 }
 
 template <data_layout Layout, El::Device Device>
-void setup_default_builders(LayerFactoryT& factory)
+void setup_default_builders(layer_factory& factory)
 {
   using namespace lbann_data;
 
@@ -196,17 +197,15 @@ get_layer_factory() {
 template <data_layout Layout, El::Device Device>
 std::unique_ptr<Layer>
 build_layer(lbann_comm* comm, google::protobuf::Message const& in_msg) {
-  auto&& msg =
-    proto_helpers::get_oneof_message(in_msg, "layer_type");
+  auto&& msg = get_oneof_message(in_msg, "layer_type");
   auto&& factory = get_layer_factory<Layout, Device>();
   return factory.create_object(msg.GetDescriptor()->name(), comm, msg);
 }
 }// namespace <anon>
 
-
-std::vector<El::Int> get_slice_points_from_reader(const generic_data_reader* dr,
-                                                  const std::string& var_category,
-                                                  bool& is_supported);
+std::vector<El::Int> get_slice_points_from_reader(
+  const generic_data_reader* dr, const std::string& var_category,
+  bool& is_supported);
 
 template <data_layout Layout, El::Device Device>
 std::unique_ptr<Layer> construct_layer(
@@ -238,7 +237,7 @@ std::unique_ptr<Layer> construct_layer(
       comm, data_readers, num_parallel_readers, proto_layer);
   }
   else {
-    return build_layer<Layout, Device>(layer_pb_name, comm, layer_msg);
+    return build_layer<Layout, Device>(comm, layer_msg);
   }
 }
 
