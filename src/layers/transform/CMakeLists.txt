@@ -3,6 +3,7 @@ set_full_path(THIS_DIR_SOURCES
   crop.cpp
   evaluation.cpp
   in_top_k.cpp
+  pooling.cpp
   sort.cpp
   tessellate.cpp
   )

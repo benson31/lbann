@@ -40,7 +40,8 @@ namespace lbann {
 template <data_layout T_layout, El::Device Dev>
 class unpooling_layer;
 
-template <data_layout T_layout = data_layout::DATA_PARALLEL, El::Device Dev = El::Device::CPU>
+template <data_layout T_layout = data_layout::DATA_PARALLEL,
+          El::Device Dev = El::Device::CPU>
 class pooling_layer : public transform_layer {
 private:
 
@@ -551,7 +552,12 @@ private:
   }
 #endif // LBANN_HAS_CUDNN
 
-};
+};// class pooling_layer
+
+template <data_layout Layout, El::Device Device>
+std::unique_ptr<pooling_layer<Layout, Device>
+build_pooling_layer_from_protobuf(
+  lbann_comm*, google::protobuf::Message const&);
 
 } // namespace lbann
 
