@@ -50,7 +50,7 @@ void save_session(const lbann_comm& comm, const int argc, char * const* argv, lb
 ///
 void read_prototext_file(
   const std::string& fn,
-  lbann_data::LbannPB& pb,
+  google::protobuf::Message& pb,
   const bool master);
 
 ///

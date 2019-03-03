@@ -521,7 +521,7 @@ void init_data_readers(
   }
 }
 
-void read_prototext_file(const std::string& fn, lbann_data::LbannPB& pb, const bool master)
+void read_prototext_file(const std::string& fn, google::protobuf::Message& pb, const bool master)
 {
   std::ostringstream err;
   int fd = open(fn.c_str(), O_RDONLY);
