@@ -729,162 +729,163 @@ message Motif {
 //========================================================================
 
 message Layer {
-   string name = 50;
-   string parents = 151;
-   string children = 152;
-   string data_layout = 52;
-   string device_allocation = 55;
-   string weights = 54;
-   bool num_neurons_from_data_reader = 53;
-   bool freeze = 5;
-   string hint_layer = 56;
+  string name = 50;
+  string parents = 151;
+  string children = 152;
+  string data_layout = 52;
+  string device_allocation = 55;
+  string weights = 54;
+  bool num_neurons_from_data_reader = 53;
+  bool freeze = 5;
+  string hint_layer = 56;
 
-   repeated WeightsData weights_data = 153;
-   string top = 154;
-   string bottom = 155;
-   string type = 156;
+  repeated WeightsData weights_data = 153;
+  string top = 154;
+  string bottom = 155;
+  string type = 156;
 
-   // a Layer should contain exactly one of the following
-   // (this may or may not be properly checked for in proto_common.cpp)
-   //
-   // @todo: this should be done better using oneof:
-   //   oneof a_layer {
-   //       Reshape reshape = 306
-   //       Pooling pooling = 12;
-   //       ...
-   //   }
-   //
-   //
+  // a Layer should contain exactly one of the following
+  // (this may or may not be properly checked for in proto_common.cpp)
+  //
+  // @todo: this should be done better using oneof:
+  //   oneof a_layer {
+  //       Reshape reshape = 306
+  //       Pooling pooling = 12;
+  //       ...
+  //   }
+  //
+  //
 
-   // motif layer
-   MotifLayer motif_layer = 4;
+  oneof layer_type {
+    // motif layer
+    MotifLayer motif_layer = 4;
 
-   // Input layers
-   Input input = 2;
+    // Input layers
+    Input input = 2;
 
-   // Transform layers
-   Reshape reshape = 306;
-   Pooling pooling = 12;
-   Concatenation concatenation = 300;
-   Slice slice = 301;
-   Split split = 302;
-   Sum sum = 303;
-   WeightedSum weighted_sum = 323;
-   Unpooling unpooling = 304;
-   Hadamard hadamard = 308;
-   Constant constant = 309;
-   Zero zero = 315;
-   Reduction reduction = 310;
-   Evaluation evaluation = 311;
-   Gaussian gaussian = 312;
-   Bernoulli bernoulli = 313;
-   Uniform uniform = 314;
-   Crop crop = 316;
-   CategoricalRandom categorical_random = 317;
-   DiscreteRandom discrete_random = 318;
-   Dummy dummy = 319;
-   StopGradient stop_gradient = 320;
-   InTopK in_top_k = 324;
-   Sort sort = 325;
-   WeightsLayer weights_layer = 326;
-   Tessellate tessellate = 327;
+    // Transform layers
+    Reshape reshape = 306;
+    Pooling pooling = 12;
+    Concatenation concatenation = 300;
+    Slice slice = 301;
+    Split split = 302;
+    Sum sum = 303;
+    WeightedSum weighted_sum = 323;
+    Unpooling unpooling = 304;
+    Hadamard hadamard = 308;
+    Constant constant = 309;
+    Zero zero = 315;
+    Reduction reduction = 310;
+    Evaluation evaluation = 311;
+    Gaussian gaussian = 312;
+    Bernoulli bernoulli = 313;
+    Uniform uniform = 314;
+    Crop crop = 316;
+    CategoricalRandom categorical_random = 317;
+    DiscreteRandom discrete_random = 318;
+    Dummy dummy = 319;
+    StopGradient stop_gradient = 320;
+    InTopK in_top_k = 324;
+    Sort sort = 325;
+    WeightsLayer weights_layer = 326;
+    Tessellate tessellate = 327;
 
-   // Learning layers
-   FullyConnected fully_connected = 11;
-   Convolution convolution = 13;
-   Deconvolution deconvolution = 305;
+    // Learning layers
+    FullyConnected fully_connected = 11;
+    Convolution convolution = 13;
+    Deconvolution deconvolution = 305;
 
-   // Loss layers
-   CrossEntropy cross_entropy = 60;
-   MeanSquaredError mean_squared_error = 61;
-   MeanAbsoluteError mean_absolute_error = 62;
-   CategoricalAccuracy categorical_accuracy = 63;
-   TopKCategoricalAccuracy top_k_categorical_accuracy = 64;
-   L2Norm2 l2_norm2 = 65;
-   L1Norm l1_norm = 66;
-   BinaryCrossEntropy binary_cross_entropy = 67;
-   SigmoidBinaryCrossEntropy sigmoid_binary_cross_entropy = 68;
-   BooleanAccuracy boolean_accuracy = 69;
-   BooleanFalseNegative boolean_false_negative = 70;
-   BooleanFalsePositive boolean_false_positive = 71;
+    // Loss layers
+    CrossEntropy cross_entropy = 60;
+    MeanSquaredError mean_squared_error = 61;
+    MeanAbsoluteError mean_absolute_error = 62;
+    CategoricalAccuracy categorical_accuracy = 63;
+    TopKCategoricalAccuracy top_k_categorical_accuracy = 64;
+    L2Norm2 l2_norm2 = 65;
+    L1Norm l1_norm = 66;
+    BinaryCrossEntropy binary_cross_entropy = 67;
+    SigmoidBinaryCrossEntropy sigmoid_binary_cross_entropy = 68;
+    BooleanAccuracy boolean_accuracy = 69;
+    BooleanFalseNegative boolean_false_negative = 70;
+    BooleanFalsePositive boolean_false_positive = 71;
 
-   // Math layers
-   LogicalNot logical_not = 401;
-   Abs abs = 402;
-   Negative negative = 403;
-   Sign sign = 404;
-   Round round = 405;
-   Ceil ceil = 406;
-   Floor floor = 407;
-   Reciprocal reciprocal = 408;
-   Square square = 409;
-   Sqrt sqrt = 410;
-   Rsqrt rsqrt = 411;
-   SafeReciprocal safe_reciprocal = 412;
-   Exp exp = 413;
-   Expm1 expm1 = 414;
-   Log log = 415;
-   Log1p log1p = 416;
-   Cos cos = 417;
-   Sin sin = 418;
-   Tan tan = 419;
-   Acos acos = 420;
-   Asin asin = 421;
-   Atan atan = 422;
-   Cosh cosh = 423;
-   Sinh sinh = 424;
-   Tanh tanh = 425;
-   Acosh acosh = 426;
-   Asinh asinh = 427;
-   Atanh atanh = 428;
-   Add add = 450;
-   Subtract subtract = 451;
-   Multiply multiply = 452;
-   Divide divide = 453;
-   Mod mod = 454;
-   Pow pow = 455;
-   SafeDivide safe_divide = 456;
-   SquaredDifference squared_difference = 457;
-   Max max = 458;
-   Min min = 459;
-   Equal equal = 460;
-   NotEqual not_equal = 461;
-   Less less = 462;
-   LessEqual less_equal = 463;
-   Greater greater = 464;
-   GreaterEqual greater_equal = 465;
-   LogicalAnd logical_and = 466;
-   LogicalOr logical_or = 467;
-   LogicalXor logical_xor = 468;
-   Clamp clamp = 469;
+    // Math layers
+    LogicalNot logical_not = 401;
+    Abs abs = 402;
+    Negative negative = 403;
+    Sign sign = 404;
+    Round round = 405;
+    Ceil ceil = 406;
+    Floor floor = 407;
+    Reciprocal reciprocal = 408;
+    Square square = 409;
+    Sqrt sqrt = 410;
+    Rsqrt rsqrt = 411;
+    SafeReciprocal safe_reciprocal = 412;
+    Exp exp = 413;
+    Expm1 expm1 = 414;
+    Log log = 415;
+    Log1p log1p = 416;
+    Cos cos = 417;
+    Sin sin = 418;
+    Tan tan = 419;
+    Acos acos = 420;
+    Asin asin = 421;
+    Atan atan = 422;
+    Cosh cosh = 423;
+    Sinh sinh = 424;
+    Tanh tanh = 425;
+    Acosh acosh = 426;
+    Asinh asinh = 427;
+    Atanh atanh = 428;
+    Add add = 450;
+    Subtract subtract = 451;
+    Multiply multiply = 452;
+    Divide divide = 453;
+    Mod mod = 454;
+    Pow pow = 455;
+    SafeDivide safe_divide = 456;
+    SquaredDifference squared_difference = 457;
+    Max max = 458;
+    Min min = 459;
+    Equal equal = 460;
+    NotEqual not_equal = 461;
+    Less less = 462;
+    LessEqual less_equal = 463;
+    Greater greater = 464;
+    GreaterEqual greater_equal = 465;
+    LogicalAnd logical_and = 466;
+    LogicalOr logical_or = 467;
+    LogicalXor logical_xor = 468;
+    Clamp clamp = 469;
 
-   // Regularization layers
-   BatchNormalization batch_normalization = 19;
-   LocalResponseNormalization local_response_normalization = 20;
-   Dropout dropout = 21;
-   SeluDropout selu_dropout = 229;
+    // Regularization layers
+    BatchNormalization batch_normalization = 19;
+    LocalResponseNormalization local_response_normalization = 20;
+    Dropout dropout = 21;
+    SeluDropout selu_dropout = 229;
 
-   // Activation layers
-   Elu elu = 200;
-   Identity identity = 201;
-   LeakyRelu leaky_relu = 202;
-   LogSigmoid log_sigmoid = 203;
-   LogSoftmax log_softmax = 204;
-   Relu relu = 205;
-   Selu selu = 206;
-   Sigmoid sigmoid = 207;
-   Softmax softmax = 208;
-   Softplus softplus = 209;
-   Softsign softsign = 210;
+    // Activation layers
+    Elu elu = 200;
+    Identity identity = 201;
+    LeakyRelu leaky_relu = 202;
+    LogSigmoid log_sigmoid = 203;
+    LogSoftmax log_softmax = 204;
+    Relu relu = 205;
+    Selu selu = 206;
+    Sigmoid sigmoid = 207;
+    Softmax softmax = 208;
+    Softplus softplus = 209;
+    Softsign softsign = 210;
 
-   // Image layers
-   BilinearResize bilinear_resize = 500;
+    // Image layers
+    BilinearResize bilinear_resize = 500;
 
-   // Miscellaneous layers
-   Covariance covariance = 600;
-   Variance variance = 601;
-   ChannelwiseMean channelwise_mean = 602;
-
+    // Miscellaneous layers
+    Covariance covariance = 600;
+    Variance variance = 601;
+    ChannelwiseMean channelwise_mean = 602;
+  }
 }
 ///////////////////////
 // MotifLayer //
