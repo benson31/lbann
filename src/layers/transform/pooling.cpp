@@ -24,7 +24,9 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "lbann/layers/transform/crop.hpp"
+#include "lbann/layers/transform/pooling.hpp"
+
+#include "lbann/proto/factories.hpp"
 
 // Source tree includes
 #include "factory_helpers.hpp"
@@ -55,9 +57,9 @@ struct pooling_layer_builder<data_layout::DATA_PARALLEL, Device> {
     if (mode_str == "average" )        { mode = pool_mode::average; }
     if (mode_str == "average_no_pad" ) { mode = pool_mode::average_no_pad; }
     if (params.has_vectors()) {
-      const auto& dims = parse_list<int>(params.pool_dims());
-      const auto& pads = parse_list<int>(params.pool_pads());
-      const auto& strides = parse_list<int>(params.pool_strides());
+      const auto& dims = proto::parse_list<int>(params.pool_dims());
+      const auto& pads = proto::parse_list<int>(params.pool_pads());
+      const auto& strides = proto::parse_list<int>(params.pool_strides());
       return lbann::make_unique<
         pooling_layer<data_layout::DATA_PARALLEL, Device>>(
           comm, dims.size(), dims, pads, strides, mode);

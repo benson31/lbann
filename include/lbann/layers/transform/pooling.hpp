@@ -555,7 +555,7 @@ private:
 };// class pooling_layer
 
 template <data_layout Layout, El::Device Device>
-std::unique_ptr<pooling_layer<Layout, Device>
+std::unique_ptr<pooling_layer<Layout, Device>>
 build_pooling_layer_from_protobuf(
   lbann_comm*, google::protobuf::Message const&);
 
