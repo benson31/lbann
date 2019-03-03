@@ -1031,4 +1031,25 @@ void save_session(const lbann_comm& comm, const int argc, char * const* argv, lb
   out.close();
 }
 
+google::protobuf::Message const&
+get_oneof_message(
+  google::protobuf::Message const& msg, std::string const& oneof_name)
+{
+  auto refl = msg.GetReflection();
+  auto oneof_handle = msg.GetDescriptor()->FindOneofByName(oneof_name);
+  if (!oneof_handle) {
+    LBANN_ERROR(std::string("Message has no oneof field named \"")
+                + oneof_name + "\"");
+  }
+
+  auto oneof_field = refl->GetOneofFieldDescriptor(msg, oneof_handle);
+  if (!oneof_field) {
+    LBANN_ERROR("Oneof field in message has not been set.");
+  }
+  if (oneof_field->type() != google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+    LBANN_ERROR("Oneof field is not of message type.");
+  }
+  return refl->GetMessage(msg, oneof_field);
+}
+
 } // namespace lbann

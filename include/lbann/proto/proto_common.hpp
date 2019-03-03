@@ -58,6 +58,10 @@ bool write_prototext_file(
   const std::string& fn,
   lbann_data::LbannPB& pb);
 
+google::protobuf::Message const&
+get_oneof_message(
+  google::protobuf::Message const& msg, std::string const& oneof_name);
+
 } // namespace lbann
 
 #endif // LBANN_PROTO_PROTO_COMMON_HPP_INCLUDED
