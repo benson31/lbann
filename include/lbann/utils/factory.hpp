@@ -116,6 +116,15 @@ public:
     return names;
   }
 
+  /** @brief Get the number of registered builders
+   *
+   *  @return The number of registered builders.
+   */
+  size_t size() const noexcept
+  {
+    return m_registered_builders.size();
+  }
+
 private:
   /** @brief An associative list of keys and builders. */
   map_type m_registered_builders;
