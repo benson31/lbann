@@ -252,6 +252,11 @@ class unpooling_layer : public transform_layer {
 
 };
 
+template <data_layout Layout, El::Device Device>
+std::unique_ptr<unpooling_layer<Layout, Device>>
+build_unpooling_layer_from_protobuf(
+  lbann_comm*, google::protobuf::Message const&);
+
 }  // namespace lbann
 
 #endif  // LBANN_LAYER_POOLING_HPP_INCLUDED

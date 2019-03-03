@@ -6,6 +6,7 @@ set_full_path(THIS_DIR_SOURCES
   pooling.cpp
   sort.cpp
   tessellate.cpp
+  unpooling.cpp
   )
 
 if (LBANN_HAS_CUDA)
