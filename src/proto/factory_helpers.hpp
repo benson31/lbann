@@ -3,7 +3,7 @@
 #define _LBANN_SRC_LAYERS_FACTORY_HELPERS__INCLUDED
 
 #define INSTANTIATE_LAYER_BUILD_FULL(NAME, LAYOUT, DEVICE)              \
-  template <>                                                           \
+  template                                                              \
   std::unique_ptr<NAME##_layer<LAYOUT, DEVICE>>                         \
   build_##NAME##_layer_from_protobuf<LAYOUT, DEVICE>(                   \
     lbann_comm*, google::protobuf::Message const&)
