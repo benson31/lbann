@@ -24,6 +24,7 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#define NO_EXPL_INST_DECL
 #include "lbann/layers/math/binary.hpp"
 #include "lbann/utils/entrywise_operator.hpp"
 
@@ -428,57 +429,68 @@ struct logical_xor_op {
 } // namespace
 
 // Template instantiation
-#define INSTANTIATE(layer, op)                                          \
+#define EXPL_INST_DEF(layer_name)                                 \
+  template class entrywise_binary_layer<                          \
+    data_layout::DATA_PARALLEL, El::Device::CPU,                  \
+      layer_name##_name_struct>;                                  \
+  template class entrywise_binary_layer<                          \
+    data_layout::MODEL_PARALLEL, El::Device::CPU,                 \
+      layer_name##_name_struct>
+
+#define INSTANTIATE(layer_name, op)                                     \
   template <>                                                           \
-  void layer<data_layout::MODEL_PARALLEL, El::Device::CPU>              \
-         ::fp_compute() {                                               \
+  void layer_name<data_layout::MODEL_PARALLEL, El::Device::CPU>         \
+  ::fp_compute() {                                                      \
     apply_entrywise_binary_operator<op>(get_prev_activations(0),        \
                                         get_prev_activations(1),        \
                                         get_activations());             \
   }                                                                     \
   template <>                                                           \
-  void layer<data_layout::MODEL_PARALLEL, El::Device::CPU>              \
-         ::bp_compute() {                                               \
-    apply_binary_backprop_operator<op>(get_local_prev_activations(0),   \
-                                       get_local_prev_activations(1),   \
-                                       get_local_prev_error_signals(),  \
-                                       get_local_error_signals(0),      \
-                                       get_local_error_signals(1));     \
-  }                                                                     \
-  template <>                                                           \
-  void layer<data_layout::DATA_PARALLEL, El::Device::CPU>               \
-         ::fp_compute() {                                               \
-    apply_entrywise_binary_operator<op>(get_prev_activations(0),        \
-                                        get_prev_activations(1),        \
-                                        get_activations());             \
-  }                                                                     \
-  template <>                                                           \
-  void layer<data_layout::DATA_PARALLEL, El::Device::CPU>               \
+  void layer_name<data_layout::MODEL_PARALLEL, El::Device::CPU>         \
   ::bp_compute() {                                                      \
     apply_binary_backprop_operator<op>(get_local_prev_activations(0),   \
                                        get_local_prev_activations(1),   \
                                        get_local_prev_error_signals(),  \
                                        get_local_error_signals(0),      \
                                        get_local_error_signals(1));     \
-  }
-  INSTANTIATE(add_layer, add_op)
-  INSTANTIATE(subtract_layer, subtract_op)
-  INSTANTIATE(multiply_layer, multiply_op)
-  INSTANTIATE(divide_layer, divide_op)
-  INSTANTIATE(mod_layer, mod_op)
-  INSTANTIATE(pow_layer, pow_op)
-  INSTANTIATE(safe_divide_layer, safe_divide_op)
-  INSTANTIATE(squared_difference_layer, squared_difference_op)
-  INSTANTIATE(max_layer, max_op)
-  INSTANTIATE(min_layer, min_op)
-  INSTANTIATE(equal_layer, equal_op)
-  INSTANTIATE(not_equal_layer, not_equal_op)
-  INSTANTIATE(less_layer, less_op)
-  INSTANTIATE(less_equal_layer, less_equal_op)
-  INSTANTIATE(greater_layer, greater_op)
-  INSTANTIATE(greater_equal_layer, greater_equal_op)
-  INSTANTIATE(logical_and_layer, logical_and_op)
-  INSTANTIATE(logical_or_layer, logical_or_op)
-  INSTANTIATE(logical_xor_layer, logical_xor_op)
+  }                                                                     \
+  template <>                                                           \
+  void layer_name<data_layout::DATA_PARALLEL, El::Device::CPU>          \
+  ::fp_compute() {                                                      \
+    apply_entrywise_binary_operator<op>(get_prev_activations(0),        \
+                                        get_prev_activations(1),        \
+                                        get_activations());             \
+  }                                                                     \
+  template <>                                                           \
+  void layer_name<data_layout::DATA_PARALLEL, El::Device::CPU>          \
+  ::bp_compute() {                                                      \
+    apply_binary_backprop_operator<op>(get_local_prev_activations(0),   \
+                                       get_local_prev_activations(1),   \
+                                       get_local_prev_error_signals(),  \
+                                       get_local_error_signals(0),      \
+                                       get_local_error_signals(1));     \
+  }                                                                     \
+  EXPL_INST_DEF(layer_name)
+
+  INSTANTIATE(add_layer, add_op);
+  INSTANTIATE(subtract_layer, subtract_op);
+  INSTANTIATE(multiply_layer, multiply_op);
+  INSTANTIATE(divide_layer, divide_op);
+  INSTANTIATE(mod_layer, mod_op);
+  INSTANTIATE(pow_layer, pow_op);
+  INSTANTIATE(safe_divide_layer, safe_divide_op);
+  INSTANTIATE(squared_difference_layer, squared_difference_op);
+  INSTANTIATE(max_layer, max_op);
+  INSTANTIATE(min_layer, min_op);
+  INSTANTIATE(equal_layer, equal_op);
+  INSTANTIATE(not_equal_layer, not_equal_op);
+  INSTANTIATE(less_layer, less_op);
+  INSTANTIATE(less_equal_layer, less_equal_op);
+  INSTANTIATE(greater_layer, greater_op);
+  INSTANTIATE(greater_equal_layer, greater_equal_op);
+  INSTANTIATE(logical_and_layer, logical_and_op);
+  INSTANTIATE(logical_or_layer, logical_or_op);
+  INSTANTIATE(logical_xor_layer, logical_xor_op);
 
 } // namespace lbann
+#undef NO_EXPL_INST_DECL
