@@ -28,7 +28,9 @@
 #define LBANN_LAYER_UNPOOLING_HPP_INCLUDED
 
 #include <vector>
+
 #include "lbann/layers/transform/pooling.hpp"
+#include "lbann/proto/factory_helpers.hpp"
 #include "lbann/utils/exception.hpp"
 #include "lbann/utils/im2col.hpp"
 
@@ -252,10 +254,7 @@ class unpooling_layer : public transform_layer {
 
 };
 
-template <data_layout Layout, El::Device Device>
-std::unique_ptr<unpooling_layer<Layout, Device>>
-build_unpooling_layer_from_protobuf(
-  lbann_comm*, google::protobuf::Message const&);
+DECLARE_LAYER_BUILDER(unpooling);
 
 }  // namespace lbann
 

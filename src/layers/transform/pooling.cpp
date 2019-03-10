@@ -27,9 +27,9 @@
 #include "lbann/layers/transform/pooling.hpp"
 
 #include "lbann/proto/factories.hpp"
+#include "lbann/proto/factory_helpers.hpp"
 
 // Source tree includes
-#include "factory_helpers.hpp"
 #include "lbann.pb.h"
 
 namespace lbann {

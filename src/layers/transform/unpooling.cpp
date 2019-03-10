@@ -25,10 +25,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/layers/transform/unpooling.hpp"
+#include "lbann/proto/factory_helpers.hpp"
 #include "lbann/utils/memory.hpp"
 
 // Source tree includes
-#include "factory_helpers.hpp"
 #include "lbann.pb.h"
 
 namespace lbann {

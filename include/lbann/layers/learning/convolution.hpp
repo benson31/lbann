@@ -28,6 +28,7 @@
 #define LBANN_LAYERS_LEARNING_CONVOLUTION_HPP_INCLUDED
 
 #include "lbann/layers/learning/base_convolution.hpp"
+#include "lbann/proto/factory_helpers.hpp"
 #include "lbann/utils/exception.hpp"
 
 namespace lbann {
@@ -155,6 +156,7 @@ protected:
 
 };
 
-} // namespace lbann
+DECLARE_LAYER_BUILDER(convolution);
 
+} // namespace lbann
 #endif // LBANN_LAYERS_LEARNING_CONVOLUTION_HPP_INCLUDED
