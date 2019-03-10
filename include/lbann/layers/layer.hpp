@@ -507,6 +507,30 @@ private:
 
 };
 
+//
+// Template instantiation helpers
+//
+
+#define LAYER_EXPL_INST_BASE(class_name, layout, device)        \
+  template class class_name<layout, device>
+
+#ifndef NO_EXPL_INST_DECL
+#define LAYER_EXPL_INST_DECL_BASE(class_name, layout, device)   \
+  extern LAYER_EXPL_INST_BASE(class_name, layout, device)
+#else
+#define LAYER_EXPL_INST_DECL_BASE(...)
+#endif // NO_EXPL_INST_DECL
+
+#define ADD_LAYER_EXPLICIT_INSTANTIATION_DECL(class_name, device)       \
+  LAYER_EXPL_INST_DECL_BASE(                                            \
+    class_name, data_layout::DATA_PARALLEL, device);                    \
+  LAYER_EXPL_INST_DECL_BASE(                                            \
+    class_name, data_layout::MODEL_PARALLEL, device)
+
+#define ADD_LAYER_EXPLICIT_INSTANTIATION(class_name, device)            \
+  LAYER_EXPL_INST_BASE(class_name, data_layout::DATA_PARALLEL, device); \
+  LAYER_EXPL_INST_BASE(class_name, data_layout::MODEL_PARALLEL, device)
+
 } // namespace lbann
 
 #endif // LBANN_LAYERS_LAYER_HPP_INCLUDED
