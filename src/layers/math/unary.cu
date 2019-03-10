@@ -24,6 +24,7 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#define NO_EXPL_INST_DECL
 #include "lbann/layers/math/unary.hpp"
 #include "lbann/utils/cuda.hpp"
 
@@ -343,6 +344,14 @@ struct atanh_op {
 } // namespace
 
 // Template instantiation
+#define EXPL_INST_DEF(layer_name)                       \
+  template class entrywise_unary_layer<               \
+    data_layout::DATA_PARALLEL, El::Device::GPU,        \
+        layer_name##_name_struct>;                      \
+  template class entrywise_unary_layer<               \
+    data_layout::MODEL_PARALLEL, El::Device::GPU,       \
+        layer_name##_name_struct>
+
 #define INSTANTIATE(layer, op)                                          \
   template <>                                                           \
   void layer<data_layout::MODEL_PARALLEL, El::Device::GPU>              \
@@ -369,34 +378,36 @@ struct atanh_op {
     cuda::apply_entrywise_binary_operator<op>(get_prev_activations(),   \
                                               get_prev_error_signals(), \
                                               get_error_signals());     \
-  }
-  INSTANTIATE(logical_not_layer, logical_not_op)
-  INSTANTIATE(abs_layer, abs_op)
-  INSTANTIATE(negative_layer, negative_op)
-  INSTANTIATE(sign_layer, sign_op)
-  INSTANTIATE(round_layer, round_op)
-  INSTANTIATE(ceil_layer, ceil_op)
-  INSTANTIATE(floor_layer, floor_op)
-  INSTANTIATE(reciprocal_layer, reciprocal_op)
-  INSTANTIATE(square_layer, square_op)
-  INSTANTIATE(sqrt_layer, sqrt_op)
-  INSTANTIATE(safe_reciprocal_layer, safe_reciprocal_op)
-  INSTANTIATE(rsqrt_layer, rsqrt_op)
-  INSTANTIATE(exp_layer, exp_op)
-  INSTANTIATE(expm1_layer, expm1_op)
-  INSTANTIATE(log_layer, log_op)
-  INSTANTIATE(log1p_layer, log1p_op)
-  INSTANTIATE(cos_layer, cos_op)
-  INSTANTIATE(sin_layer, sin_op)
-  INSTANTIATE(tan_layer, tan_op)
-  INSTANTIATE(acos_layer, acos_op)
-  INSTANTIATE(asin_layer, asin_op)
-  INSTANTIATE(atan_layer, atan_op)
-  INSTANTIATE(cosh_layer, cosh_op)
-  INSTANTIATE(sinh_layer, sinh_op)
-  INSTANTIATE(tanh_layer, tanh_op)
-  INSTANTIATE(acosh_layer, acosh_op)
-  INSTANTIATE(asinh_layer, asinh_op)
-  INSTANTIATE(atanh_layer, atanh_op)
+  }                                                                     \
+  EXPL_INST_DEF(layer)
 
+  INSTANTIATE(logical_not_layer, logical_not_op);
+  INSTANTIATE(abs_layer, abs_op);
+  INSTANTIATE(negative_layer, negative_op);
+  INSTANTIATE(sign_layer, sign_op);
+  INSTANTIATE(round_layer, round_op);
+  INSTANTIATE(ceil_layer, ceil_op);
+  INSTANTIATE(floor_layer, floor_op);
+  INSTANTIATE(reciprocal_layer, reciprocal_op);
+  INSTANTIATE(square_layer, square_op);
+  INSTANTIATE(sqrt_layer, sqrt_op);
+  INSTANTIATE(safe_reciprocal_layer, safe_reciprocal_op);
+  INSTANTIATE(rsqrt_layer, rsqrt_op);
+  INSTANTIATE(exp_layer, exp_op);
+  INSTANTIATE(expm1_layer, expm1_op);
+  INSTANTIATE(log_layer, log_op);
+  INSTANTIATE(log1p_layer, log1p_op);
+  INSTANTIATE(cos_layer, cos_op);
+  INSTANTIATE(sin_layer, sin_op);
+  INSTANTIATE(tan_layer, tan_op);
+  INSTANTIATE(acos_layer, acos_op);
+  INSTANTIATE(asin_layer, asin_op);
+  INSTANTIATE(atan_layer, atan_op);
+  INSTANTIATE(cosh_layer, cosh_op);
+  INSTANTIATE(sinh_layer, sinh_op);
+  INSTANTIATE(tanh_layer, tanh_op);
+  INSTANTIATE(acosh_layer, acosh_op);
+  INSTANTIATE(asinh_layer, asinh_op);
+  INSTANTIATE(atanh_layer, atanh_op);
 } // namespace lbann
+#undef NO_EXPL_INST_DECL

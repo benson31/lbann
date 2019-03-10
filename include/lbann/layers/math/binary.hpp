@@ -107,7 +107,7 @@ protected:
 #endif
 #else
 #define ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(...)
-#endif
+#endif // NO_EXPL_INST_DECL
 
 // Convenience macro to define an entry-wise binary layer class
 #define DEFINE_ENTRYWISE_BINARY_LAYER(layer_name, layer_string)         \
@@ -147,4 +147,5 @@ DEFINE_ENTRYWISE_BINARY_LAYER(logical_xor_layer, "logical xor");
 } // namespace lbann
 
 #undef DEFINE_ENTRYWISE_BINARY_LAYER
+#undef ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL
 #endif // LBANN_LAYERS_MATH_BINARY_HPP_INCLUDED

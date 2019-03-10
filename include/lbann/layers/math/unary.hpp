@@ -43,6 +43,7 @@ public:
   entrywise_unary_layer* copy() const override {
     return new entrywise_unary_layer<Layout,Device,Name>(*this);
   }
+  ~entrywise_unary_layer() = default;
   std::string get_type() const override { return Name(); }
   data_layout get_data_layout() const override { return Layout; }
   El::Device get_device_allocation() const override { return Device; }
@@ -55,6 +56,34 @@ protected:
   void bp_compute() override;
 };
 
+#ifndef NO_EXPL_INST_DECL
+#ifdef LBANN_HAS_GPU
+#define ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(class_name)          \
+  extern template class                                                 \
+  entrywise_unary_layer<data_layout::DATA_PARALLEL, El::Device::CPU,    \
+                        class_name##_name_struct>;                      \
+  extern template class                                                 \
+  entrywise_unary_layer<data_layout::MODEL_PARALLEL, El::Device::CPU,   \
+                        class_name##_name_struct>;                      \
+  extern template class                                                 \
+  entrywise_unary_layer<data_layout::DATA_PARALLEL, El::Device::GPU,    \
+                        class_name##_name_struct>;                      \
+  extern template class                                                 \
+  entrywise_unary_layer<data_layout::MODEL_PARALLEL, El::Device::GPU,   \
+                        class_name##_name_struct>
+#else
+#define ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(class_name)          \
+  extern template class                                                 \
+  entrywise_unary_layer<data_layout::DATA_PARALLEL, El::Device::CPU,    \
+                        class_name##_name_struct>;                      \
+  extern template class                                                 \
+  entrywise_unary_layer<data_layout::MODEL_PARALLEL, El::Device::CPU,   \
+                        class_name##_name_struct>
+#endif
+#else
+#define ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(...)
+#endif // NO_EXPL_INST_DECL
+
 // Convenience macro to define an entry-wise unary layer class
 #define DEFINE_ENTRYWISE_UNARY_LAYER(layer_name, layer_string)          \
   struct layer_name##_name_struct {                                     \
@@ -62,7 +91,8 @@ protected:
   };                                                                    \
   template <data_layout Layout, El::Device Device>                      \
   using layer_name                                                      \
-  = entrywise_unary_layer<Layout, Device, layer_name##_name_struct>;
+  = entrywise_unary_layer<Layout, Device, layer_name##_name_struct>;    \
+  ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(layer_name)
 
 // Logical operations
 DEFINE_ENTRYWISE_UNARY_LAYER(logical_not_layer, "logical not");
@@ -109,4 +139,5 @@ DEFINE_ENTRYWISE_UNARY_LAYER(atanh_layer, "hyperbolic arctangent");
 } // namespace lbann
 
 #undef DEFINE_ENTRYWISE_UNARY_LAYER
+#undef ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL
 #endif // LBANN_LAYERS_MATH_UNARY_HPP_INCLUDED
