@@ -30,6 +30,7 @@
 #include <vector>
 #include <omp.h>
 #include "lbann/layers/layer.hpp"
+#include "lbann/models/model.hpp"
 #include "lbann/weights/initializer.hpp"
 #include "lbann/weights/variance_scaling_initializers.hpp"
 #include "lbann/utils/cudnn.hpp"
