@@ -30,17 +30,33 @@
 
 namespace lbann {
 namespace proto {
+template <typename OutT, typename... Args>
+struct GenerateBuilderType_struct
+{
+  using type = std::function<std::unique_ptr<OutT>(Args...)>;
+};
+
+template <typename OutT, typename... Args>
+using GenerateBuilderType =
+  typename GenerateBuilderType_struct<OutT, Args...>::type;
+
+using layer_factory = lbann::generic_factory<
+  Layer,
+  std::string,
+  GenerateBuilderType<
+    Layer, lbann_comm*, google::protobuf::Message const&>>;
+
 namespace { // Anon
 #define LAYER_DEFAULT_BUILDER(KEY, NAME)                                \
   factory.register_builder(                                             \
-    #KEY, &default_layer_builder<KEY, NAME##_layer<Layout, Device>>)
+    #KEY, &default_layer_builder<NAME##_layer<Layout, Device>>)
 #define LAYER_MESSAGE_BUILDER(KEY, NAME)                                \
   factory.register_builder(                                             \
     #KEY, &build_##NAME##_layer_from_protobuf<Layout, Device>)
 #define LAYER_SPECIAL_BUILDER(...) (void) factory
 
-template <typename MsgT, typename LayerT>
-std::unique_ptr<Layer>
+template <typename LayerT>
+std::unique_ptr<LayerT>
 default_layer_builder(
   lbann_comm* comm, google::protobuf::Message const&)
 {
@@ -55,46 +71,46 @@ void setup_default_builders(layer_factory& factory)
   // MotifLayer, motif_layer?????
 
   // Input layers
-  LAYER_SPECIAL_BUILDER(Input, input);
+  //LAYER_SPECIAL_BUILDER(Input, input);
 
   // Transform layers
-  LAYER_SPECIAL_BUILDER(Reshape, reshape);
+  //LAYER_SPECIAL_BUILDER(Reshape, reshape);
   LAYER_MESSAGE_BUILDER(Pooling, pooling);
-  LAYER_MESSAGE_BUILDER(Concatenation, concatenation);
-  LAYER_SPECIAL_BUILDER(Slice, slice);
+  //LAYER_MESSAGE_BUILDER(Concatenation, concatenation);
+  //LAYER_SPECIAL_BUILDER(Slice, slice);
   LAYER_DEFAULT_BUILDER(Split, split);
   LAYER_DEFAULT_BUILDER(Sum, sum);
-  LAYER_MESSAGE_BUILDER(WeightedSum, weighted_sum);
+  //LAYER_MESSAGE_BUILDER(WeightedSum, weighted_sum);
   LAYER_MESSAGE_BUILDER(Unpooling, unpooling);
   LAYER_DEFAULT_BUILDER(Hadamard, hadamard);
-  LAYER_MESSAGE_BUILDER(Constant, constant);
-  LAYER_MESSAGE_BUILDER(Zero, zero);
-  LAYER_MESSAGE_BUILDER(Reduction, reduction);
+  //LAYER_MESSAGE_BUILDER(Constant, constant);
+  //LAYER_MESSAGE_BUILDER(Zero, zero);
+  //LAYER_MESSAGE_BUILDER(Reduction, reduction);
   LAYER_DEFAULT_BUILDER(Evaluation, evaluation);
-  LAYER_MESSAGE_BUILDER(Gaussian, gaussian);
-  LAYER_MESSAGE_BUILDER(Bernoulli, bernoulli);
-  LAYER_MESSAGE_BUILDER(Uniform, uniform);
-  LAYER_MESSAGE_BUILDER(Crop, crop);
-  LAYER_MESSAGE_BUILDER(CategoricalRandom, categorical_random);
-  LAYER_MESSAGE_BUILDER(DiscreteRandom, discrete_random);
+  //LAYER_MESSAGE_BUILDER(Gaussian, gaussian);
+  //LAYER_MESSAGE_BUILDER(Bernoulli, bernoulli);
+  //LAYER_MESSAGE_BUILDER(Uniform, uniform);
+  //LAYER_MESSAGE_BUILDER(Crop, crop);
+  //LAYER_MESSAGE_BUILDER(CategoricalRandom, categorical_random);
+  //LAYER_MESSAGE_BUILDER(DiscreteRandom, discrete_random);
   LAYER_DEFAULT_BUILDER(Dummy, dummy);
   LAYER_DEFAULT_BUILDER(StopGradient, stop_gradient);
-  LAYER_MESSAGE_BUILDER(InTopK, in_top_k);
-  LAYER_MESSAGE_BUILDER(Sort, sort);
-  LAYER_MESSAGE_BUILDER(WeightsLayer, weights_layer);
-  LAYER_MESSAGE_BUILDER(Tessellate, tessellate);
+  //LAYER_MESSAGE_BUILDER(InTopK, in_top_k);
+  //LAYER_MESSAGE_BUILDER(Sort, sort);
+  //LAYER_MESSAGE_BUILDER(WeightsLayer, weights_layer);
+  //LAYER_MESSAGE_BUILDER(Tessellate, tessellate);
 
   // Learning layers
-  LAYER_SPECIAL_BUILDER(FullyConnected, fully_connected);
+  //LAYER_SPECIAL_BUILDER(FullyConnected, fully_connected);
   LAYER_MESSAGE_BUILDER(Convolution, convolution);
-  LAYER_SPECIAL_BUILDER(Deconvolution, deconvolution);
+  //LAYER_SPECIAL_BUILDER(Deconvolution, deconvolution);
 
   // Loss layers
   LAYER_DEFAULT_BUILDER(CrossEntropy, cross_entropy);
   LAYER_DEFAULT_BUILDER(MeanSquaredError, mean_squared_error);
   LAYER_DEFAULT_BUILDER(MeanAbsoluteError, mean_absolute_error);
   LAYER_DEFAULT_BUILDER(CategoricalAccuracy, categorical_accuracy);
-  LAYER_MESSAGE_BUILDER(TopKCategoricalAccuracy, top_k_categorical_accuracy);
+  //LAYER_MESSAGE_BUILDER(TopKCategoricalAccuracy, top_k_categorical_accuracy);
   LAYER_DEFAULT_BUILDER(L2Norm2, l2_norm2);
   LAYER_DEFAULT_BUILDER(L1Norm, l1_norm);
   LAYER_DEFAULT_BUILDER(BinaryCrossEntropy, binary_cross_entropy);
@@ -151,18 +167,18 @@ void setup_default_builders(layer_factory& factory)
   LAYER_DEFAULT_BUILDER(LogicalAnd, logical_and);
   LAYER_DEFAULT_BUILDER(LogicalOr, logical_or);
   LAYER_DEFAULT_BUILDER(LogicalXor, logical_xor);
-  LAYER_MESSAGE_BUILDER(Clamp, clamp);
+  //LAYER_MESSAGE_BUILDER(Clamp, clamp);
 
   // Regularization layers
-  LAYER_MESSAGE_BUILDER(BatchNormalization, batch_normalization);
-  LAYER_MESSAGE_BUILDER(LocalResponseNormalization, local_response_normalization);
-  LAYER_MESSAGE_BUILDER(Dropout, dropout);
-  LAYER_MESSAGE_BUILDER(SeluDropout, selu_dropout);
+  //LAYER_MESSAGE_BUILDER(BatchNormalization, batch_normalization);
+  //LAYER_MESSAGE_BUILDER(LocalResponseNormalization, local_response_normalization);
+  //LAYER_MESSAGE_BUILDER(Dropout, dropout);
+  //LAYER_MESSAGE_BUILDER(SeluDropout, selu_dropout);
 
   // Activation layers
-  LAYER_MESSAGE_BUILDER(Elu, elu);
+  //LAYER_MESSAGE_BUILDER(Elu, elu);
   LAYER_DEFAULT_BUILDER(Identity, identity);
-  LAYER_MESSAGE_BUILDER(LeakyRelu, leaky_relu);
+  //LAYER_MESSAGE_BUILDER(LeakyRelu, leaky_relu);
   LAYER_DEFAULT_BUILDER(LogSigmoid, log_sigmoid);
   LAYER_DEFAULT_BUILDER(LogSoftmax, log_softmax);
   LAYER_DEFAULT_BUILDER(Relu, relu);
@@ -173,12 +189,15 @@ void setup_default_builders(layer_factory& factory)
   LAYER_DEFAULT_BUILDER(Softsign, softsign);
 
   // Image layers
-  LAYER_MESSAGE_BUILDER(BilinearResize, bilinear_resize);
+  //LAYER_MESSAGE_BUILDER(BilinearResize, bilinear_resize);
 
   // Miscellaneous layers
-  LAYER_MESSAGE_BUILDER(Covariance, covariance);
-  LAYER_MESSAGE_BUILDER(Variance, variance);
-  LAYER_MESSAGE_BUILDER(ChannelwiseMean, channelwise_mean);
+  //LAYER_MESSAGE_BUILDER(Covariance, covariance);
+  //LAYER_MESSAGE_BUILDER(Variance, variance);
+  //LAYER_MESSAGE_BUILDER(ChannelwiseMean, channelwise_mean);
+  LAYER_DEFAULT_BUILDER(MiniBatchIndex, mini_batch_index);
+  LAYER_DEFAULT_BUILDER(MiniBatchSize, mini_batch_size);
+
 }
 #undef LAYER_SPECIAL_BUILDER
 #undef LAYER_MESSAGE_BUILDER
@@ -214,8 +233,9 @@ std::unique_ptr<Layer> construct_layer(
   int num_parallel_readers,
   const lbann_data::Layer& proto_layer) {
 
-  auto&& layer_msg = proto_layer.get_oneof_message(proto_layer, "layer_type");
-  auto&& layer_pb_name = layer_msg->GetDescriptor()->name();
+  auto&& layer_msg = get_oneof_message(proto_layer, "layer_type");
+#if 0
+  auto&& layer_pb_name = layer_msg.GetDescriptor()->name();
   if (layer_pb_name == "Input") {
     return build_input_layer_from_protobuf<Layout, Device>(
       comm, data_readers, num_parallel_readers, proto_layer);
@@ -239,6 +259,8 @@ std::unique_ptr<Layer> construct_layer(
   else {
     return build_layer<Layout, Device>(comm, layer_msg);
   }
+#endif
+  return build_layer<Layout, Device>(comm, layer_msg);
 }
 
 // Template instantiation
