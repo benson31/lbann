@@ -24,6 +24,7 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#define NO_EXPL_INST_DECL
 #include "lbann/layers/activations/softmax.hpp"
 
 namespace lbann {
@@ -433,4 +434,5 @@ void softmax_layer<data_layout::MODEL_PARALLEL, El::Device::GPU>::bp_compute() {
 
 }
 
+ADD_LAYER_EXPLICIT_INSTANTIATION(softmax_layer, El::Device::GPU);
 } // namespace lbann

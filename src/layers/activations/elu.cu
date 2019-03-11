@@ -23,7 +23,7 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
-
+#define NO_EXPL_INST_DECL
 #include "lbann/layers/activations/elu.hpp"
 
 namespace lbann {
@@ -162,4 +162,5 @@ void elu_layer<data_layout::MODEL_PARALLEL, El::Device::GPU>
            get_local_error_signals());
 }
 
+ADD_LAYER_EXPLICIT_INSTANTIATION(elu_layer, El::Device::GPU);
 } // namespace lbann

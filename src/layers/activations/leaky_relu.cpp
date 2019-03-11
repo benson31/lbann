@@ -24,6 +24,7 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#define NO_EXPL_INST_DECL
 #include "lbann/layers/activations/leaky_relu.hpp"
 
 namespace lbann {
@@ -100,4 +101,5 @@ void leaky_relu_layer<data_layout::MODEL_PARALLEL, El::Device::CPU>
            get_local_error_signals());
 }
 
+ADD_LAYER_EXPLICIT_INSTANTIATION(leaky_relu_layer, El::Device::CPU);
 } // namespace lbann

@@ -74,8 +74,12 @@ private:
   /** Scale parameter for negative region. */
   DataType m_alpha;
 
-};
+};// class elu_layer
+
+ADD_LAYER_EXPLICIT_INSTANTIATION_DECL(elu_layer, El::Device::CPU);
+#ifdef LBANN_HAS_GPU
+ADD_LAYER_EXPLICIT_INSTANTIATION_DECL(elu_layer, El::Device::GPU);
+#endif
 
 } // namespace lbann
-
 #endif // LBANN_LAYERS_ACTIVATIONS_ELU_HPP_INCLUDED

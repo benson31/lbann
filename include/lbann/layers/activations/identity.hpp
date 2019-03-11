@@ -59,6 +59,10 @@ protected:
   void bp_compute() override {}
 };
 
-} // namespace lbann
+ADD_LAYER_EXPLICIT_INSTANTIATION_DECL(identity_layer, El::Device::CPU);
+#ifdef LBANN_HAS_GPU
+ADD_LAYER_EXPLICIT_INSTANTIATION_DECL(identity_layer, El::Device::GPU);
+#endif
 
+} // namespace lbann
 #endif // LBANN_LAYERS_ACTIVATIONS_IDENTITY_HPP_INCLUDED

@@ -118,6 +118,10 @@ private:
 
 };
 
-} // namespace lbann
+ADD_LAYER_EXPLICIT_INSTANTIATION_DECL(log_softmax_layer, El::Device::CPU);
+#ifdef LBANN_HAS_GPU
+ADD_LAYER_EXPLICIT_INSTANTIATION_DECL(log_softmax_layer, El::Device::GPU);
+#endif
 
+} // namespace lbann
 #endif // LBANN_LAYERS_ACTIVATIONS_LOG_SOFTMAX_HPP_INCLUDED
