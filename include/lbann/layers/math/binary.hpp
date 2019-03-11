@@ -83,7 +83,7 @@ protected:
 
 #ifndef NO_EXPL_INST_DECL
 #ifdef LBANN_HAS_GPU
-#define ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(class_name)          \
+#define ADD_BINARY_LAYER_EXPLICIT_INSTANTIATION_DECL(class_name)          \
   extern template class                                                 \
   entrywise_binary_layer<data_layout::DATA_PARALLEL, El::Device::CPU,   \
                          class_name##_name_struct>;                     \
@@ -97,7 +97,7 @@ protected:
   entrywise_binary_layer<data_layout::MODEL_PARALLEL, El::Device::GPU,  \
                          class_name##_name_struct>
 #else
-#define ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(class_name)          \
+#define ADD_BINARY_LAYER_EXPLICIT_INSTANTIATION_DECL(class_name)          \
   extern template class                                                 \
   entrywise_binary_layer<data_layout::DATA_PARALLEL, El::Device::CPU,   \
                          class_name##_name_struct>;                     \
@@ -106,7 +106,7 @@ protected:
                          class_name##_name_struct>
 #endif
 #else
-#define ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(...)
+#define ADD_BINARY_LAYER_EXPLICIT_INSTANTIATION_DECL(...)
 #endif // NO_EXPL_INST_DECL
 
 // Convenience macro to define an entry-wise binary layer class
@@ -117,7 +117,7 @@ protected:
   template <data_layout Layout, El::Device Device>                      \
   using layer_name                                                      \
   = entrywise_binary_layer<Layout, Device, layer_name##_name_struct>;   \
-  ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL(layer_name)
+  ADD_BINARY_LAYER_EXPLICIT_INSTANTIATION_DECL(layer_name)
 
 // Arithmetic operations
 DEFINE_ENTRYWISE_BINARY_LAYER(add_layer,                "add");
@@ -147,5 +147,5 @@ DEFINE_ENTRYWISE_BINARY_LAYER(logical_xor_layer, "logical xor");
 } // namespace lbann
 
 #undef DEFINE_ENTRYWISE_BINARY_LAYER
-#undef ADD_MATH_LAYER_EXPLICIT_INSTANTIATION_DECL
+#undef ADD_BINARY_LAYER_EXPLICIT_INSTANTIATION_DECL
 #endif // LBANN_LAYERS_MATH_BINARY_HPP_INCLUDED

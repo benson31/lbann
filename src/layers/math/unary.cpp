@@ -343,12 +343,12 @@ struct atanh_op {
 } // namespace
 
 // Template instantiation
-#define EXPL_INST_DEF(layer_name)                                \
+#define EXPL_INST_DEF(layer_name)                                 \
   template class entrywise_unary_layer<                           \
-    data_layout::DATA_PARALLEL, El::Device::CPU, \
-    layer_name##_name_struct>; \
-  template class entrywise_unary_layer<                                 \
-    data_layout::MODEL_PARALLEL, El::Device::CPU, \
+    data_layout::DATA_PARALLEL, El::Device::CPU,                  \
+    layer_name##_name_struct>;                                    \
+  template class entrywise_unary_layer<                           \
+    data_layout::MODEL_PARALLEL, El::Device::CPU,                 \
     layer_name##_name_struct>
 
 #define INSTANTIATE(layer, op)                                          \

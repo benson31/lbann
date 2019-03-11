@@ -23,7 +23,7 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
-
+#define NO_EXPL_INST_DECL
 #include "lbann/layers/activations/activations.hpp"
 #include "lbann/utils/entrywise_operator.hpp"
 
@@ -132,6 +132,14 @@ struct softsign_op {
 } // namespace
 
 // Template instantiation
+#define EXPL_INST_DEF(layer_name)                                 \
+  template class entrywise_unary_layer<                           \
+    data_layout::DATA_PARALLEL, El::Device::CPU,                  \
+    layer_name##_name_struct>;                                    \
+  template class entrywise_unary_layer<                           \
+    data_layout::MODEL_PARALLEL, El::Device::CPU,                 \
+    layer_name##_name_struct>
+
 #define INSTANTIATE(layer, op)                                          \
   template <>                                                           \
   void layer<data_layout::MODEL_PARALLEL, El::Device::CPU>              \
@@ -158,12 +166,14 @@ struct softsign_op {
     apply_entrywise_binary_operator<op>(get_prev_activations(),         \
                                         get_prev_error_signals(),       \
                                         get_error_signals());           \
-  }
-  INSTANTIATE(log_sigmoid_layer, log_sigmoid_op)
-  INSTANTIATE(relu_layer, relu_op)
-  INSTANTIATE(selu_layer, selu_op)
-  INSTANTIATE(sigmoid_layer, sigmoid_op)
-  INSTANTIATE(softplus_layer, softplus_op)
-  INSTANTIATE(softsign_layer, softsign_op)
+  }                                                                     \
+  EXPL_INST_DEF(layer)
+
+INSTANTIATE(log_sigmoid_layer, log_sigmoid_op);
+INSTANTIATE(relu_layer, relu_op);
+INSTANTIATE(selu_layer, selu_op);
+INSTANTIATE(sigmoid_layer, sigmoid_op);
+INSTANTIATE(softplus_layer, softplus_op);
+INSTANTIATE(softsign_layer, softsign_op);
 
 } // namespace lbann
