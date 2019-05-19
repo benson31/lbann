@@ -98,7 +98,7 @@ void init_data_readers(
       init_org_image_data_reader(readme, master, reader);
       set_up_generic_preprocessor = false;
     } else if ((name == "imagenet") || (name == "imagenet_patches") ||
-               (name == "triplet") || (name == "mnist_siamese") || (name == "multi_images")) {
+               (name == "multihead_siamese") || (name == "mnist_siamese") || (name == "multi_images")) {
       init_image_data_reader(readme, pb_metadata, master, reader);
       set_up_generic_preprocessor = false;
     } else if (name == "jag") {
@@ -195,6 +195,15 @@ void init_data_readers(
       reader_csv->set_skip_rows(readme.skip_rows());
       reader_csv->set_has_header(readme.has_header());
       reader = reader_csv;
+    } else if (name == "numpy_npz_conduit_reader") {
+      auto *npz_conduit = new numpy_npz_conduit_reader(shuffle);
+      npz_conduit->set_has_labels(!readme.disable_labels());
+      npz_conduit->set_has_responses(!readme.disable_responses());
+      npz_conduit->set_scaling_factor_int16(readme.scaling_factor_int16());
+      if (readme.num_labels() != 0) {
+        npz_conduit->set_num_labels(readme.num_labels());
+      }
+      reader = npz_conduit;
     } else if (name == "numpy") {
       auto* reader_numpy = new numpy_reader(shuffle);
       reader_numpy->set_has_labels(!readme.disable_labels());
@@ -325,12 +334,22 @@ void init_data_readers(
       reader = new mesh_reader(shuffle);
     } else if (name == "moving_mnist") {
       reader = new moving_mnist_reader(7, 40, 40, 2);
+    } else if (name == "python") {
+#ifdef LBANN_HAS_PYTHON
+      const auto& params = readme.python();
+      reader = new python_reader(params.module(),
+                                 params.module_dir(),
+                                 params.sample_function(),
+                                 params.num_samples_function(),
+                                 params.sample_dims_function());
+#else
+      LBANN_ERROR("attempted to construct Python data reader, "
+                  "but LBANN is not built with Python/C API");
+#endif // LBANN_HAS_PYTHON
     } else {
-      if (master) {
         err << __FILE__ << " " << __LINE__ << " :: unknown name for data reader: "
             << name;
         throw lbann_exception(err.str());
-      }
     }
     reader->set_comm(comm);
 
@@ -409,12 +428,14 @@ void init_data_readers(
       if (name == "mnist") {
         reader_validation = new mnist_reader(shuffle);
         (*(mnist_reader *)reader_validation) = (*(mnist_reader *)reader);
+      } else if (name == "numpy_npz_conduit_reader") {
+        reader_validation = new numpy_npz_conduit_reader(*dynamic_cast<const numpy_npz_conduit_reader*>(reader));
       } else if (name == "imagenet") {
         reader_validation = new imagenet_reader(*dynamic_cast<const imagenet_reader*>(reader));
       } else if (name == "imagenet_patches") {
         reader_validation = new imagenet_reader_patches(*dynamic_cast<const imagenet_reader_patches*>(reader));
-      } else if (name == "triplet") {
-        reader_validation = new data_reader_triplet(*dynamic_cast<const data_reader_triplet*>(reader));
+      } else if (name == "multihead_siamese") {
+  	reader_validation = new data_reader_multihead_siamese(*dynamic_cast<const data_reader_multihead_siamese*>(reader));
       } else if (name == "mnist_siamese") {
         reader_validation = new data_reader_mnist_siamese(*dynamic_cast<const data_reader_mnist_siamese*>(reader));
       } else if (name == "multi_images") {
@@ -445,7 +466,12 @@ void init_data_readers(
             reader_jag_conduit->set_leading_reader(leader);
           }
         } else {
-          reader_validation = new data_reader_jag_conduit(*dynamic_cast<const data_reader_jag_conduit*>(reader));
+          reader_validation = new data_reader_jag_conduit(*dynamic_cast<const data_reader_jag_conduit*>(reader), reader->get_unused_indices());
+          const std::string role = "validate";
+          auto reader_jag_conduit = dynamic_cast<data_reader_jag_conduit*>(reader_validation);
+          reader_jag_conduit->set_leading_reader(reader_jag_conduit);
+          reader_jag_conduit->set_role(role);
+          leading_reader_jag_conduit[role] = reader_jag_conduit;
         }
 #endif // LBANN_HAS_CONDUIT
       } else if (name == "nci") {
@@ -473,10 +499,30 @@ void init_data_readers(
       } else if (name == "moving_mnist") {
         reader_validation = new moving_mnist_reader(7, 40, 40, 2);
         (*(moving_mnist_reader *)reader_validation) = (*(moving_mnist_reader *)reader);
+      } else if (name == "python") {
+#ifdef LBANN_HAS_PYTHON
+        const auto& params = readme.python();
+        reader_validation = new python_reader(params.module(),
+                                              params.module_dir(),
+                                              params.sample_function(),
+                                              params.num_samples_function(),
+                                              params.sample_dims_function());
+#else
+        LBANN_ERROR("attempted to construct Python data reader, "
+                    "but LBANN is not built with Python/C API");
+#endif // LBANN_HAS_PYTHON
       }
 
       reader_validation->set_role("validate");
       reader_validation->use_unused_index_set();
+      if(reader_validation->get_data_store_ptr() != nullptr) {
+        reader_validation->get_data_store_ptr()->compact_nodes();
+      }
+      /// At this point clean up any unused samples from the main data store
+      if(reader->get_data_store_ptr() != nullptr) {
+        auto&& data_store = reader->get_data_store_ptr();
+        data_store->purge_unused_samples(reader->get_unused_indices());
+      }
 
       if (master) {
         size_t num_train = reader->get_num_data();
@@ -699,7 +745,6 @@ void customize_data_readers_index_list(const lbann_comm& comm, lbann_data::Lbann
 
 void get_cmdline_overrides(const lbann_comm& comm, lbann_data::LbannPB& p)
 {
-  bool master = comm.am_world_master();
   std::ostringstream err;
 
   options *opts = options::get();
@@ -714,20 +759,6 @@ void get_cmdline_overrides(const lbann_comm& comm, lbann_data::LbannPB& p)
       readme->set_percent_of_data_to_use(0.0);
       readme->set_absolute_sample_count(n);
     }
-  }
-
-  if (opts->has_string("dag_model")) {
-    std::string sanity = model->type();
-    if (sanity != "dnn") {
-      err << __FILE__ << " " << __LINE__ << " :: "
-          << " the current network model is: " << model->type()
-          << "; you can only change the model to 'dag_model' if the current model is 'dnn'";
-      throw lbann_exception(err.str());
-    }
-    if (master) {
-      std::cout << "\nchanging model from " << model->type() << " to: dag\n\n";
-    }
-    model->set_type("dag_model");
   }
 
   if (opts->has_string("data_filedir")
@@ -751,7 +782,7 @@ void get_cmdline_overrides(const lbann_comm& comm, lbann_data::LbannPB& p)
   if (opts->has_string("data_reader_percent")) {
     set_data_readers_percent(p);
   }
-  if (opts->has_bool("no_im_comm") and opts->get_bool("no_im_comm")) {
+  if (opts->get_bool("no_im_comm")) {
     int sz = model->callback_size();
     for (int j=0; j<sz; j++) {
       lbann_data::Callback *c = model->mutable_callback(j);
@@ -775,75 +806,16 @@ void get_cmdline_overrides(const lbann_comm& comm, lbann_data::LbannPB& p)
   if (opts->has_int("num_parallel_readers")) {
     model->set_num_parallel_readers(opts->get_int("num_parallel_readers"));
   }
-  if (opts->has_bool("disable_cuda")) {
+  if (opts->get_bool("disable_cuda")) {
     model->set_disable_cuda(opts->get_bool("disable_cuda"));
   }
   if (opts->has_int("random_seed")) {
     model->set_random_seed(opts->get_int("random_seed"));
   }
-  if(opts->has_bool("serialize_io")) {
+  if(opts->get_bool("serialize_io")) {
     model->set_serialize_io(opts->get_bool("serialize_io"));
   }
 
-
-  if (opts->has_string("opt")) {
-    //defaults
-    double learn_rate = opts->has_float("learn_rate") ? opts->get_float("learn_rate") : 0.01;
-    double eps = opts->has_float("eps") ? opts->get_float("eps") : 1e-8;
-    double beta1 = opts->has_float("beta1") ? opts->get_float("beta1") : 0.9;
-    double beta2 = opts->has_float("beta2") ? opts->get_float("beta2") : 0.99;
-    double init_learning_rate = opts->has_float("init_learning_rate") ? opts->get_float("init_learning_rate") : 0.01;
-    double hyper_learning_rate = opts->has_float("hyper_learning_rate") ? opts->get_float("hyper_learning_rate") : 1e-7;
-    double momentum = opts->has_float("momentum") ? opts->get_float("momentum") : 0.9;
-    double decay_rate = opts->has_float("decay_rate") ? opts->get_float("decay_rate") : 0.5;
-    bool nesterov = opts->has_bool("nesterov") ? opts->get_float("nesterov") : false;
-
-    auto *opt = new lbann_data::Optimizer;
-
-    //construct the new optimizer
-    std::string opt_string = opts->get_string("opt");
-    if (opt_string == "adagrad") {
-      auto *a = new lbann_data::Adagrad;
-      a->set_learn_rate(learn_rate);
-      a->set_eps(eps);
-      opt->set_allocated_adagrad(a);
-    } else if (opt_string == "adam") {
-      auto *a = new lbann_data::Adam;
-      a->set_learn_rate(learn_rate);
-      a->set_eps(eps);
-      a->set_beta1(beta1);
-      a->set_beta2(beta2);
-      opt->set_allocated_adam(a);
-    } else if (opt_string == "hypergradient_adam") {
-      auto *a = new lbann_data::HypergradientAdam;
-      a->set_init_learning_rate(init_learning_rate);
-      a->set_hyper_learning_rate(hyper_learning_rate);
-      a->set_beta1(beta1);
-      a->set_beta2(beta2);
-      a->set_eps(eps);
-      opt->set_allocated_hypergradient_adam(a);
-    } else if (opt_string == "rmsprop") {
-      auto *a = new lbann_data::Rmsprop;
-      a->set_learn_rate(learn_rate);
-      a->set_decay_rate(decay_rate);
-      a->set_eps(eps);
-      opt->set_allocated_rmsprop(a);
-    } else if (opt_string == "sgd") {
-      if (master) std::cerr << "\n\nsetting: sgd\n\n";
-      auto *a = new lbann_data::Sgd;
-      a->set_learn_rate(learn_rate);
-      a->set_momentum(momentum);
-      a->set_decay_rate(decay_rate);
-      a->set_nesterov(nesterov);
-      opt->set_allocated_sgd(a);
-    } else {
-      err << __FILE__ << " " << __LINE__
-          << " :: unknown string for --optimizer: " << opt_string
-          << " should be on of: adagrad, adam, hypergradient_adam, rmsprop, sgd";
-      throw lbann_exception(err.str());
-    }
-    p.set_allocated_optimizer(opt);
-  }
 }
 
 void print_parameters(const lbann_comm& comm, lbann_data::LbannPB& p)
@@ -898,7 +870,6 @@ void print_help(std::ostream& os)
        "        e.g: --disable_cuda, then a value of '1' is assigned)\n"
        "\n"
        "General:\n"
-       "  --dag_model\n"
        "  --mini_batch_size=<int>\n"
        "  --num_epochs=<int>\n"
        "  --block_size=<int>\n"
@@ -924,8 +895,14 @@ void print_help(std::ostream& os)
        "      display information on how OpenMP threads are provisioned\n"
        "  --use_data_store \n"
        "      Enables the data store in-memory structure\n"
+       "  --preload_data_store \n"
+       "      Preloads the data store in-memory structure during data reader load time\n"
        "  --super_node \n"
        "      Enables the data store in-memory structure to use the supernode exchange structure\n"
+       "  --write_sample_list \n"
+       "      Writes out the sample list that was loaded into the current directory\n"
+       "  --ltfb_verbose \n"
+       "      Increases number of per-trainer messages that are reported\n"
        "\n"
        "DataReaders:\n"
        "  --data_filedir=<string>\n"
@@ -950,20 +927,7 @@ void print_help(std::ostream& os)
        "            used if the option is not specified on the cmd line.\n"
        "            If you specify an option that is not applicable to your choice\n"
        "            of optimizer, the option is ignored\n"
-       "\n"
-       "  --opt=<string>\n"
-       "     <string> must be one of:\n"
-       "         adagrad, adam, hypergradient_adam, rmsprop, sgd\n"
-       "\n"
-       "  --learn_rate=< 0.01 >          (all except hypergradient_adam)\n"
-       "  --eps=< 1e-8 >                 (all except sgd)\n"
-       "  --beta1=< 0.9 >                (adam, hypergradient_adam)\n"
-       "  --beta2=< 0.99 >               (adam, hypergradient_adam)\n"
-       "  --init_learning_rate=< 0.01 >  (hypergradient_adam)\n"
-       "  --hyper_learning_rate=< 1e-7 > (hypergradient_adam)\n"
-       "  --momentum=< 0.9 >             (sgd)\n"
-       "  --decay_rate=< 0.5 >           (sgd, rmsprop)\n"
-       "  --nesterov=< false >           (sgd)\n";
+       "\n";
 }
 
 void copy_file(std::string fn, std::ofstream &out)

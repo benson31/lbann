@@ -32,6 +32,7 @@ message Reader {
   int64 absolute_sample_count = 11;
   int64 first_n = 200;
   double percent_of_data_to_use = 12;
+
   //for GAN model
   bool gan_labelling = 201;
   int32 gan_label_value = 202;
@@ -71,6 +72,16 @@ message Reader {
   bool index_list_per_trainer = 400;
   bool index_list_per_model   = 401;
   //------------- end of only for index lists ------------------
+
+  PythonDataReader python = 501;
+}
+
+message PythonDataReader {
+  string module = 1;                // Python module
+  string module_dir = 2;            // Directory containing Python module
+  string sample_function = 3;       // Function that gets data sample
+  string num_samples_function = 4;  // Function that gets number of data samples
+  string sample_dims_function = 5;  // Function that gets dimensions of data sample
 }
 
 message ImagePreprocessor {
@@ -316,46 +327,45 @@ message LayerMetric {
 // Optimizers
 //========================================================================
 message Optimizer {
-  // An Optimizer should contain exactly one of the following
-  // (this may or may not be properly checked for in proto_common.cpp)
-  Adagrad adagrad = 1;
-  Rmsprop rmsprop = 2;
-  Adam adam = 3;
-  HypergradientAdam hypergradient_adam = 4;
-  Sgd sgd = 5;
+  oneof optimizer_type {
+    AdaGrad adagrad = 1;
+    Adam adam = 2;
+    HypergradientAdam hypergradient_adam = 3;
+    RMSprop rmsprop = 4;
+    SGD sgd = 5;
+  }
 }
 
-message Adagrad {
+message AdaGrad {
   double learn_rate = 1;
-  double eps = 2;  //default: 1e-8
+  double eps = 2;           // Suggested: 1e-8
 }
 
 message Adam {
   double learn_rate = 1;
-  double beta1 = 6;    //default: 0.9
-  double beta2 = 7;    //default: 0.99
-  double eps = 8;      //default: 1e-8
+  double beta1 = 6;         // Suggested: 0.9
+  double beta2 = 7;         // Suggested: 0.99
+  double eps = 8;           // Suggested: 1e-8
 }
 
 message HypergradientAdam {
   double init_learning_rate = 1;
-  double hyper_learning_rate = 2; //default: 1e-7
-  double beta1 = 6;    //default: 0.9
-  double beta2 = 7;    //default: 0.99
-  double eps = 8;      //default: 1e-8
+  double hyper_learning_rate = 2;   // Suggested: 1e-7
+  double beta1 = 6;                 // Suggested: 0.9
+  double beta2 = 7;                 // Suggested: 0.99
+  double eps = 8;                   // Suggested: 1e-8
 }
 
-message Rmsprop {
+message RMSprop {
   double learn_rate = 1;
   double decay_rate = 2;
-  double eps = 3; //default: 1e-8
+  double eps = 3;           // Suggested: 1e-8
 }
 
-message Sgd {
+message SGD {
   double learn_rate = 1;
-  double momentum = 2;     //default: 0
-  double decay_rate = 3;   //default: 0
-  bool nesterov = 4;       //default: false
+  double momentum = 2;      // Set to zero for vanilla SGD
+  bool nesterov = 4;
 }
 
 
@@ -402,6 +412,7 @@ message Callback {
    CallbackConfusionMatrix confusion_matrix = 36;
    CallbackCheckMetric check_metric = 37;
    CallbackPerturbAdam perturb_adam = 38;
+   CallbackPerturbDropout perturb_dropout = 39;
 }
 
 message CallbackLTFB {
@@ -410,6 +421,7 @@ message CallbackLTFB {
   string weights = 3;       // default: all weights
   bool low_score_wins = 4;
   string communication_algorithm = 5;   // default: "sendrecv_weights"
+  bool exchange_hyperparameters = 6;
 }
 
 message CallbackStepLearningRate {
@@ -436,6 +448,7 @@ message CallbackSaveImages {
 
 message CallbackPrint {
   int64 interval = 1; //default in lbann_callback_print.hpp is 1
+  bool  print_global_stat_only = 2; //useful in large scale multi-trainer, default is false
 }
 
 message CallbackProfiler {
@@ -527,6 +540,7 @@ message CallbackPolyLearningRate {
   double power = 2;
   uint64 num_epochs = 3;
   uint64 max_iter = 4;
+  double end_lr = 5;
 }
 
 message CallbackStepMinibatch {
@@ -641,6 +655,10 @@ message CallbackPerturbAdam {
   string weights = 7;               // Weights with Adam optimizer
 }
 
+message CallbackPerturbDropout {
+  float keep_dropout_factor = 1; //Keep dropout prob perturbation (in log space)
+  string layers = 2; // dropout layers to perturb keep prob, all dropout layers by default
+}
 //========================================================================
 // Weights
 //========================================================================
