@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/callbacks/callback_dump_outputs.hpp"
-#include "lbann/proto/proto_common.hpp"
+#include "lbann/proto/common.hpp"
 #include "lbann/utils/file_utils.hpp"
 
 #include <callbacks.pb.h>

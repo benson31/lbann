@@ -531,7 +531,7 @@ message Layer {
    string type = 156;
 
    // a Layer should contain exactly one of the following
-   // (this may or may not be properly checked for in proto_common.cpp)
+   // (this may or may not be properly checked for in proto/common.cpp)
    //
    // @todo: this should be done better using oneof:
    //   oneof a_layer {

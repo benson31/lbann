@@ -28,7 +28,7 @@
 #define LBANN_LIBRARY_HPP
 
 #include "lbann/models/model.hpp"
-#include "lbann/proto/proto_common.hpp"
+#include "lbann/proto/common.hpp"
 
 namespace lbann {
 

@@ -26,7 +26,7 @@
 // lbann_proto.cpp - prototext application
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <lbann/proto/proto_common.hpp>
+#include <lbann/proto/common.hpp>
 
 #include <iostream>
 

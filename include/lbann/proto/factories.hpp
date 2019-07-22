@@ -27,7 +27,7 @@
 #ifndef LBANN_PROTO_FACTORIES_HPP_INCLUDED
 #define LBANN_PROTO_FACTORIES_HPP_INCLUDED
 
-#include "lbann/proto/proto_common.hpp"
+#include "lbann/proto/common.hpp"
 #include "lbann/data_readers/data_reader.hpp"
 #include "lbann/transforms/transform.hpp"
 #include "lbann/transforms/transform_pipeline.hpp"

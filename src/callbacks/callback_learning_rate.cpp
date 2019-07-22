@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/callbacks/callback_learning_rate.hpp"
-#include "lbann/proto/proto_common.hpp"
+#include "lbann/proto/common.hpp"
 
 #include "callback_helpers.hpp"
 

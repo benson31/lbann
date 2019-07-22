@@ -24,7 +24,7 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "lbann/proto/proto_common.hpp"
+#include "lbann/proto/common.hpp"
 
 #include "lbann/lbann.hpp"
 #include "lbann/base.hpp"

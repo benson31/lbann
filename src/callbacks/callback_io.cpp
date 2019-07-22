@@ -30,7 +30,7 @@
 
 #include "lbann/callbacks/callback_io.hpp"
 #include "lbann/layers/io/input/generic_input_layer.hpp"
-#include "lbann/proto/proto_common.hpp"
+#include "lbann/proto/common.hpp"
 
 namespace lbann {
 
