@@ -38,7 +38,6 @@ void test_is_shuffled(const generic_data_reader &reader, bool is_shuffled, const
 int main(int argc, char *argv[]) {
   int random_seed = lbann_default_random_seed;
   world_comm_ptr comm = initialize(argc, argv, random_seed);
-  const bool master = comm->am_world_master();
 
   try {
     // Initialize options db (this parses the command line)
@@ -59,7 +58,7 @@ int main(int argc, char *argv[]) {
 
     lbann_data::LbannPB pb;
     std::string reader_fn(opts->get_string("fn").c_str());
-    read_prototext_file(reader_fn.c_str(), pb, master);
+    read_prototext_file(reader_fn.c_str(), pb);
     const lbann_data::DataReader & d_reader = pb.data_reader();
 
     int size = d_reader.reader_size();

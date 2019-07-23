@@ -144,27 +144,27 @@ parse_prototext_filenames_from_command_line(
 
 std::vector<std::unique_ptr<lbann_data::LbannPB>>
 read_in_prototext_files(
-  const bool master,
+  const bool,
   const std::vector<prototext_fn_triple> &names)
 {
   std::vector<std::unique_ptr<lbann_data::LbannPB>> models_out;
   for (auto const& t : names) {
     auto pb = make_unique<lbann_data::LbannPB>();
     if (t.model != "none")
-      read_prototext_file(t.model, *pb, master);
+      read_prototext_file(t.model, *pb);
     if (t.reader != "none") {
       lbann_data::LbannPB p;
-      read_prototext_file(t.reader, p, master);
+      read_prototext_file(t.reader, p);
       pb->MergeFrom(p);
     }
     if (t.data_set_metadata != "none") {
       lbann_data::LbannPB p;
-      read_prototext_file(t.data_set_metadata, p, master);
+      read_prototext_file(t.data_set_metadata, p);
       pb->MergeFrom(p);
     }
     if (t.optimizer != "none") {
       lbann_data::LbannPB p;
-      read_prototext_file(t.optimizer, p, master);
+      read_prototext_file(t.optimizer, p);
       pb->MergeFrom(p);
     }
     models_out.emplace_back(std::move(pb));

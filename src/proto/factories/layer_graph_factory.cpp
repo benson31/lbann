@@ -26,6 +26,11 @@
 
 #include "lbann/proto/factories.hpp"
 
+#include "lbann/layers/layer.hpp"
+#include "lbann/layers/learning/fully_connected.hpp"
+#include "lbann/layers/transform/pooling.hpp"
+#include "lbann/layers/transform/unpooling.hpp"
+
 namespace lbann {
 namespace proto {
 

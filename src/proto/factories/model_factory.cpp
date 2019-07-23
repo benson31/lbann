@@ -25,7 +25,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/proto/factories.hpp"
+
+#include "lbann/models/model.hpp"
+#include "lbann/models/directed_acyclic_graph.hpp"
+
+#include "lbann/metrics/layer_metric.hpp"
 #include "lbann/objective_functions/layer_term.hpp"
+#include "lbann/objective_functions/weight_regularization/l2.hpp"
 
 namespace lbann {
 namespace proto {

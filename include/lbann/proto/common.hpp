@@ -27,16 +27,22 @@
 #ifndef LBANN_PROTO_PROTO_COMMON_HPP_INCLUDED
 #define LBANN_PROTO_PROTO_COMMON_HPP_INCLUDED
 
-#include "lbann/lbann.hpp"
-#include <lbann.pb.h>
-#include "lbann/proto/factories.hpp"
+#include "lbann/base.hpp"
+
+#include <google/protobuf/message.h>
+
+// Forward-declare the LbannPB class. This is less evil than
+// rebuilding every unit that this includes because someone touch an
+// unrelated part of lbann.proto...
+namespace lbann_data {
+class LbannPB;
+}// namespace lbann_data
 
 namespace lbann {
 
-/** @brief Returns true if the Model contains at least one MotifLayer */
-bool has_motifs(const lbann_comm& comm, const lbann_data::LbannPB& p);
-
-void expand_motifs(const lbann_comm& comm, lbann_data::LbannPB& pb);
+// Forward-declare some extra baggage
+class generic_data_reader;
+class lbann_comm;
 
 /** @brief Customize the name of the index list
  *
@@ -86,14 +92,13 @@ void save_session(const lbann_comm& comm,
 
 /** @brief Read prototext from a file into a protobuf message. */
 void read_prototext_file(
-  const std::string& fn,
-  lbann_data::LbannPB& pb,
-  const bool master);
+  const std::string& filename,
+  google::protobuf::Message& proto_msg);
 
 /** @brief Write a protobuf message into a prototext file. */
 bool write_prototext_file(
-  const std::string& fn,
-  lbann_data::LbannPB& pb);
+  const std::string& filename,
+  const google::protobuf::Message& pb);
 
 /** @brief Parse a space-separated list. */
 template <typename T = std::string>

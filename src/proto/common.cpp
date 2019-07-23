@@ -26,12 +26,36 @@
 
 #include "lbann/proto/common.hpp"
 
-#include "lbann/lbann.hpp"
-#include "lbann/base.hpp"
-#include "lbann/comm.hpp"
-#include "lbann/proto/init_image_data_readers.hpp"
+#include "lbann/data_readers/data_reader.hpp"
+#include "lbann/data_readers/data_reader_ascii.hpp"
+#include "lbann/data_readers/data_reader_cifar10.hpp"
+#include "lbann/data_readers/data_reader_csv.hpp"
+#include "lbann/data_readers/data_reader_image.hpp"
+#include "lbann/data_readers/data_reader_imagenet.hpp"
+#include "lbann/data_readers/data_reader_jag.hpp"
+#include "lbann/data_readers/data_reader_jag_conduit.hpp"
+#include "lbann/data_readers/data_reader_merge_features.hpp"
+#include "lbann/data_readers/data_reader_merge_samples.hpp"
+#include "lbann/data_readers/data_reader_mesh.hpp"
+#include "lbann/data_readers/data_reader_mnist.hpp"
+#include "lbann/data_readers/data_reader_moving_mnist.hpp"
+#include "lbann/data_readers/data_reader_multi_images.hpp"
+#include "lbann/data_readers/data_reader_multihead_siamese.hpp"
+#include "lbann/data_readers/data_reader_nci.hpp"
+#include "lbann/data_readers/data_reader_numpy.hpp"
+#include "lbann/data_readers/data_reader_numpy_npz.hpp"
+#include "lbann/data_readers/data_reader_numpy_npz_conduit.hpp"
+#include "lbann/data_readers/data_reader_pilot2_molecular.hpp"
+#include "lbann/data_readers/data_reader_python.hpp"
+#include "lbann/data_readers/data_reader_synthetic.hpp"
+#include "lbann/data_readers/data_reader_triplet.hpp"
+
 #include "lbann/proto/factories.hpp"
-#include "lbann/utils/file_utils.hpp"
+#include "lbann/proto/init_image_data_readers.hpp"
+#include "lbann/utils/glob.hpp"
+#include "lbann/utils/peek_map.hpp"
+
+#include <lbann.pb.h>
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -44,33 +68,6 @@
 #include <sys/stat.h>
 
 namespace lbann {
-
-bool has_motifs(const lbann_comm& comm, const lbann_data::LbannPB& p) {
-  const bool master = comm.am_world_master();
-  if (master) {
-    std::cout << "starting has_motifs\n";
-  }
-  const lbann_data::Model& m = p.model();
-  const int num_layers = m.layer_size();
-  for (int j=0; j<num_layers; j++) {
-    const lbann_data::Layer& layer = m.layer(j);
-    if (layer.has_motif_layer()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void expand_motifs(const lbann_comm& comm, lbann_data::LbannPB& pb) {
-  const bool master = comm.am_world_master();
-  if (master) {
-    std::cout << "starting expand_motifs\n";
-  }
-  const lbann_data::MotifDefinitions& m = pb.motif_definitions();
-  const int num_motifs = m.motif_size();
-  for (int j=0; j<num_motifs; j++) {
-  }
-}
 
 int get_requested_num_parallel_readers(
   const lbann_comm& comm, const lbann_data::LbannPB& p);
@@ -574,16 +571,14 @@ void init_data_readers(
   }
 }
 
-void read_prototext_file(const std::string& fn, lbann_data::LbannPB& pb, const bool master)
+void read_prototext_file(const std::string& fn,
+                         google::protobuf::Message& pb)
 {
-  std::ostringstream err;
   int fd = open(fn.c_str(), O_RDONLY);
   if (fd == -1) {
-    if (master) {
-      err <<  __FILE__ << " " << __LINE__ << " :: failed to open " << fn << " for reading";
-      throw lbann_exception(err.str());
-    }
+    LBANN_ERROR(build_string("failed to open ", fn, " for reading"));
   }
+
   using FIS=google::protobuf::io::FileInputStream;
   auto input = std::unique_ptr<FIS, std::function<void(FIS*)>>(
     new google::protobuf::io::FileInputStream(fd),
@@ -593,14 +588,13 @@ void read_prototext_file(const std::string& fn, lbann_data::LbannPB& pb, const b
     });
   bool success = google::protobuf::TextFormat::Parse(input.get(), &pb);
   if (!success) {
-    if (master) {
-      err <<  __FILE__ << " " << __LINE__ << " :: failed to read or parse prototext file: " << fn << std::endl;
-      throw lbann_exception(err.str());
-    }
+    LBANN_ERROR(
+      build_string("failed to read or parse prototext file: ", fn));
   }
 }
 
-bool write_prototext_file(const std::string& fn, lbann_data::LbannPB& pb)
+bool write_prototext_file(const std::string& fn,
+                          const google::protobuf::Message& pb)
 {
   int fd = open(fn.c_str(), O_APPEND | O_CREAT | O_TRUNC, 0644);
   if (fd == -1) {

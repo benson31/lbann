@@ -62,6 +62,15 @@
 
 namespace lbann {
 
+template <typename... Args>
+std::string build_string(Args... args)
+{
+  std::ostringstream out;
+  int dummy[] = {(out << args, 0)...};
+  (void) dummy;
+  return out.str();
+}
+
 /** Exception.
  *  A stack trace is recorded when the exception is constructed.
  */

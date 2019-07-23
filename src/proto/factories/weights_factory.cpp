@@ -26,6 +26,10 @@
 
 #include "lbann/proto/factories.hpp"
 
+#include "lbann/weights/weights.hpp"
+#include "lbann/weights/initializer.hpp"
+#include "lbann/weights/variance_scaling_initializers.hpp"
+
 namespace lbann {
 namespace proto {
 

@@ -62,6 +62,7 @@
 #include "lbann/callbacks/callback_timeline.hpp"
 #include "lbann/callbacks/callback_timer.hpp"
 #include "lbann/callbacks/callback_variable_minibatch.hpp"
+#include "lbann/callbacks/profiler.hpp"
 
 #include "lbann/proto/factories.hpp"
 #include "lbann/proto/helpers.hpp"

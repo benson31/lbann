@@ -28,9 +28,15 @@
 #define LBANN_PROTO_FACTORIES_HPP_INCLUDED
 
 #include "lbann/proto/common.hpp"
+#include "lbann/callbacks/callback.hpp"
 #include "lbann/data_readers/data_reader.hpp"
+#include "lbann/layers/layer.hpp"
+#include "lbann/optimizers/optimizer.hpp"
 #include "lbann/transforms/transform.hpp"
 #include "lbann/transforms/transform_pipeline.hpp"
+#include "lbann/utils/summary.hpp"
+
+#include <lbann.pb.h>
 
 namespace lbann {
 namespace proto {

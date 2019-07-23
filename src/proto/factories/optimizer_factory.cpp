@@ -26,6 +26,14 @@
 
 #include "lbann/proto/factories.hpp"
 
+#include "lbann/optimizers/optimizer.hpp"
+
+#include "lbann/optimizers/adagrad.hpp"
+#include "lbann/optimizers/adam.hpp"
+#include "lbann/optimizers/hypergradient_adam.hpp"
+#include "lbann/optimizers/rmsprop.hpp"
+#include "lbann/optimizers/sgd.hpp"
+
 namespace lbann {
 namespace proto {
 

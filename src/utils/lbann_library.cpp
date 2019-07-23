@@ -26,6 +26,10 @@
 
 #include "lbann/utils/lbann_library.hpp"
 #include "lbann/callbacks/callback_checkpoint.hpp"
+#include "lbann/data_readers/data_reader.hpp"
+#include "lbann/proto/factories.hpp"
+#include "lbann/utils/omp_diagnostics.hpp"
+#include "lbann/utils/threads/thread_utils.hpp"
 
 namespace lbann {
 
