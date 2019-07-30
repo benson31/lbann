@@ -415,14 +415,21 @@ if (LBANN_WITH_CONDUIT)
     endif ()
   endforeach ()
 
+  get_filename_component(_conduit_include_dirs
+    "${CONDUIT_INCLUDE_DIRS}" DIRECTORY)
+
   if (HDF5_FOUND_WITH_MODULE)
     list(APPEND _conduit_interface_link_libs
       ${HDF5_LIBRARIES})
 
-    set_target_properties(conduit::conduit
-      PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES "${HDF5_INCLUDE_DIRS}")
+    list(APPEND _conduit_include_dirs
+      "${HDF5_INCLUDE_DIRS}")
   endif ()
+
+  set_property(TARGET conduit::conduit
+    PROPERTY
+    INTERFACE_INCLUDE_DIRECTORIES
+    "${_conduit_include_dirs}")
 
   set_target_properties(conduit::conduit
     PROPERTIES
@@ -430,7 +437,6 @@ if (LBANN_WITH_CONDUIT)
     "${_conduit_interface_link_libs}")
 
   set(CONDUIT_LIBRARIES conduit::conduit)
-  set(LBANN_HAS_CONDUIT ${Conduit_FOUND})
 endif (LBANN_WITH_CONDUIT)
 
 if (LBANN_WITH_UNIT_TESTING)
@@ -446,7 +452,10 @@ if (LBANN_WITH_UNIT_TESTING)
   # Now that Catch2 has been found, start adding the unit tests
   include(CTest)
   include(Catch)
+  add_subdirectory(src/proto/unit_test)
   add_subdirectory(src/utils/unit_test)
+  add_subdirectory(src/transforms/unit_test)
+  add_subdirectory(src/transforms/vision/unit_test)
 
   # Add this one last
   add_subdirectory(unit_test)
@@ -748,7 +757,6 @@ append_str_tf(_str
   LBANN_HAS_DOXYGEN
   LBANN_HAS_LBANN_PROTO
   LBANN_HAS_ALUMINUM
-  LBANN_HAS_CONDUIT
   LBANN_HAS_PYTHON)
 string(APPEND _str
   "\n== End LBANN Configuration Summary ==\n")

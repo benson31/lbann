@@ -45,6 +45,9 @@
 #include "lbann/layers/learning/fully_connected.hpp"
 #include "lbann/layers/learning/convolution.hpp"
 #include "lbann/layers/learning/deconvolution.hpp"
+#include "lbann/layers/learning/embedding.hpp"
+#include "lbann/layers/learning/channelwise_scale_bias.hpp"
+#include "lbann/layers/learning/entrywise_scale_bias.hpp"
 
 /// Loss layers
 #include "lbann/layers/loss/categorical_accuracy.hpp"
@@ -105,11 +108,9 @@
 
 /// Data readers
 #include "lbann/data_readers/data_reader_imagenet.hpp"
-#include "lbann/data_readers/data_reader_imagenet_patches.hpp"
 #include "lbann/data_readers/data_reader_cifar10.hpp"
 #include "lbann/data_readers/data_reader_mnist.hpp"
 #include "lbann/data_readers/data_reader_multi_images.hpp"
-#include "lbann/data_readers/data_reader_mnist_siamese.hpp"
 #include "lbann/data_readers/data_reader_multihead_siamese.hpp"
 #include "lbann/data_readers/data_reader_synthetic.hpp"
 #include "lbann/data_readers/data_reader_jag.hpp"
@@ -150,8 +151,10 @@
 #include "lbann/callbacks/callback_dump_minibatch_sample_indices.hpp"
 #include "lbann/callbacks/callback_early_stopping.hpp"
 #include "lbann/callbacks/callback_ltfb.hpp"
+#include "lbann/callbacks/callback_mixup.hpp"
 #include "lbann/callbacks/callback_save_images.hpp"
 #include "lbann/callbacks/callback_save_model.hpp"
+#include "lbann/callbacks/callback_save_topk_models.hpp"
 #include "lbann/callbacks/profiler.hpp"
 #include "lbann/callbacks/callback_hang.hpp"
 #include "lbann/callbacks/callback_variable_minibatch.hpp"

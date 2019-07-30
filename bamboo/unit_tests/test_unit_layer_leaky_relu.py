@@ -15,7 +15,7 @@ def skeleton_layer_leaky_relu(cluster, executables, dir_name, compiler_name):
     command = tools.get_command(
         cluster=cluster, executable=executables[compiler_name], num_nodes=1,
         num_processes=2, dir_name=dir_name,
-        data_filedir_default='', data_reader_name='synthetic',
+        data_reader_name='synthetic',
         model_folder='tests/layer_tests', model_name='leaky_relu',
         optimizer_name='sgd',
         output_file_name=output_file_name, error_file_name=error_file_name)
@@ -23,20 +23,16 @@ def skeleton_layer_leaky_relu(cluster, executables, dir_name, compiler_name):
     assert return_code == 0
 
 
-def test_unit_layer_leaky_relu_clang4(cluster, exes, dirname):
-    skeleton_layer_leaky_relu(cluster, exes, dirname, 'clang4')
-
-
-def test_unit_layer_leaky_relu_gcc4_check(cluster, exes, dirname):
-    skeleton_layer_leaky_relu(cluster, exes, dirname, 'gcc4')
+def test_unit_layer_leaky_relu_clang6(cluster, exes, dirname):
+    skeleton_layer_leaky_relu(cluster, exes, dirname, 'clang6')
 
 
 def test_unit_layer_leaky_relu_gcc7(cluster, exes, dirname):
     skeleton_layer_leaky_relu(cluster, exes, dirname, 'gcc7')
 
 
-def test_unit_layer_leaky_relu_intel18(cluster, exes, dirname):
-    skeleton_layer_leaky_relu(cluster, exes, dirname, 'intel18')
+def test_unit_layer_leaky_relu_intel19(cluster, exes, dirname):
+    skeleton_layer_leaky_relu(cluster, exes, dirname, 'intel19')
 
 
 # Run with python -m pytest -s test_unit_ridge_regression.py -k 'test_unit_layer_leaky_relu_exe' --exe=<executable>

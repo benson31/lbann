@@ -73,6 +73,30 @@ void setup_default_builders(layer_factory& factory)
   // Input layers
   //LAYER_SPECIAL_BUILDER(Input, input);
 
+  // Learning layers
+  if (proto_layer.has_embedding()) {
+    const auto& params = proto_layer.embedding();
+    if (Layout == data_layout::DATA_PARALLEL
+        && Device == El::Device::CPU) {
+      return lbann::make_unique<embedding_layer<data_layout::DATA_PARALLEL,El::Device::CPU>>(
+               comm, params.dictionary_size(), params.embedding_size());
+    } else {
+      LBANN_ERROR("embedding layer is only supported with "
+                  "data-parallel data layout and on CPU");
+    }
+  }
+  if (proto_layer.has_channelwise_scale_bias()) {
+    if (Layout == data_layout::DATA_PARALLEL) {
+      return lbann::make_unique<channelwise_scale_bias_layer<data_layout::DATA_PARALLEL,Device>>(comm);
+    } else {
+      LBANN_ERROR("channel-wise scale/bias layer is only supported "
+                  "with data-parallel data layout");
+    }
+  }
+  if (proto_layer.has_entrywise_scale_bias()) {
+    return lbann::make_unique<entrywise_scale_bias_layer<Layout,Device>>(comm);
+  }
+
   // Transform layers
   //LAYER_SPECIAL_BUILDER(Reshape, reshape);
   LAYER_MESSAGE_BUILDER(Pooling, pooling);
@@ -301,7 +325,6 @@ std::vector<El::Int> get_slice_points_from_reader(const generic_data_reader* dr_
                                                   bool& is_supported) {
   std::vector<El::Int> slice_points;
   is_supported = false;
-#if defined(LBANN_HAS_CONDUIT)
   // TODO: remove the dynamic cast when this feature gets merged into the base class
   const auto dr = dynamic_cast<const data_reader_jag_conduit*>(dr_generic);
 
@@ -316,7 +339,6 @@ std::vector<El::Int> get_slice_points_from_reader(const generic_data_reader* dr_
                   + "\". Must be either \"independent\" or \"dependent\".");
     }
   }
-#endif
   return slice_points;
 }
 

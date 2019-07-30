@@ -16,10 +16,12 @@ set_full_path(THIS_DIR_SOURCES
   callback_dump_minibatch_sample_indices.cpp
   callback_dump_weights.cpp
   callback_early_stopping.cpp
+  callback_hang.cpp
   callback_imcomm.cpp
   callback_io.cpp
   callback_learning_rate.cpp
   callback_ltfb.cpp
+  callback_mixup.cpp
   callback_perturb_adam.cpp
   callback_print.cpp
   callback_save_images.cpp
@@ -34,6 +36,7 @@ set_full_path(THIS_DIR_SOURCES
   callback_replace_weights.cpp
   callback_gpu_memory_usage.cpp
   callback_perturb_dropout.cpp
+  callback_save_topk_models.cpp
 )
 
 # Propagate the files up the tree

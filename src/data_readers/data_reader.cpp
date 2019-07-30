@@ -710,7 +710,7 @@ double generic_data_reader::get_use_percent() const {
 
 void generic_data_reader::instantiate_data_store(const std::vector<int>& local_list_sizes) {
   options *opts = options::get();
-  if (! (opts->get_bool("use_data_store") || opts->get_bool("preload_data_store"))) {
+  if (! (opts->get_bool("use_data_store") || opts->get_bool("preload_data_store") || opts->get_bool("data_store_cache"))) {
     if (m_data_store != nullptr) {
       delete m_data_store;
       m_data_store = nullptr;
@@ -726,6 +726,10 @@ void generic_data_reader::instantiate_data_store(const std::vector<int>& local_l
     LBANN_ERROR("shuffled_indices.size() == 0");
   }
 
+  if (opts->get_bool("node_sizes_vary")) {
+    m_data_store->set_node_sizes_vary();
+  }
+
   //a call to m_data_store->check_mem_capacity(...) should go here, but
   //at the moment that depends on the sample_list class, which it shouldn't
   //TODO: revisit
@@ -733,16 +737,16 @@ void generic_data_reader::instantiate_data_store(const std::vector<int>& local_l
   m_data_store->set_shuffled_indices(&m_shuffled_indices);
 
   // optionally preload the data store
-  if (opts->get_bool("preload_data_store")) {
+  if (opts->get_bool("preload_data_store") && !opts->get_bool("data_store_cache")) {
     if(is_master()) {
-      std::cout << "Starting the preload" << std::endl;
+      std::cout << "generic_data_reader::instantiate_data_store - Starting the preload" << std::endl;
     }
     if (local_list_sizes.size() != 0) {
       m_data_store->build_preloaded_owner_map(local_list_sizes);
     }
     preload_data_store();
     if(is_master()) {
-      std::cout << "preload complete" << std::endl;
+     std::cout << "preload complete" << std::endl;
     }
   }
 
@@ -808,6 +812,20 @@ void generic_data_reader::set_partitioned(bool partitioned_yes, double overlap, 
 
 void generic_data_reader::set_mini_batch_size(const int s) {
   m_mini_batch_size = s;
+}
+
+void generic_data_reader::set_role(std::string role) {
+  m_role = role;
+  if (options::get()->has_string("jag_partitioned")
+      && get_role() == "train") {
+    m_jag_partitioned = true;
+    if (is_master()) {
+      std::cerr << "USING JAG DATA PARTITIONING\n";
+    }
+  }
+  if (m_data_store != nullptr) {
+    m_data_store->set_role(role);
+  }
 }
 
 }  // namespace lbann
