@@ -24,6 +24,7 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#define NO_EXPL_INST_DECL
 #include "lbann/layers/image/bilinear_resize.hpp"
 #include "lbann/utils/cuda.hpp"
 
@@ -156,4 +157,5 @@ void bilinear_resize_layer<data_layout::DATA_PARALLEL, El::Device::GPU>::fp_comp
 
 }
 
+ADD_LAYER_EXPLICIT_INSTANTIATION(bilinear_resize_layer, El::Device::GPU);
 } // namespace lbann
