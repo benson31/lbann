@@ -138,6 +138,10 @@ option(LBANN_WARNINGS_AS_ERRORS
   "Build with warnings promoted to errors." OFF)
 mark_as_advanced(LBANN_WARNINGS_AS_ERRORS)
 
+option(LBANN_ENABLE_CODE_COVERAGE
+  "Enable code coverage instrumentation. Requires compiler support."
+  OFF)
+
 #
 # The datatype option is not binary
 #
