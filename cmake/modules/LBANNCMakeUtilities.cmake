@@ -8,6 +8,20 @@ macro(set_full_path VAR)
   set(${VAR} "${__tmp_names}")
 endmacro()
 
+macro(set_source_path VAR)
+  unset(__tmp_names)
+
+  file(RELATIVE_PATH __relative_to ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_LIST_DIR})
+
+  foreach(filename ${ARGN})
+    unset(__name)
+    get_filename_component(__name "${filename}" NAME)
+    list(APPEND __tmp_names "${SOURCE_PREFIX}${__relative_to}/${__name}")
+    message(DEBUG "Set source path of ${__name} to ${SOURCE_PREFIX}${__relative_to}/${__name}")
+  endforeach()
+  set(${VAR} "${__tmp_names}")
+endmacro()
+
 # A function to get a string of spaces. Useful for formatting output.
 function(lbann_get_space_string OUTPUT_VAR LENGTH)
   set(_curr_length 0)

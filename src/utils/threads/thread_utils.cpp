@@ -26,7 +26,10 @@
 
 #include "lbann/utils/threads/thread_utils.hpp"
 #include <thread>
+
+#ifdef LBANN_HAS_OPENMP
 #include <omp.h>
+#endif // LBANN_HAS_OPENMP
 
 namespace lbann {
 
@@ -34,7 +37,11 @@ int num_free_cores_per_process(const lbann_comm *comm) {
   auto hw_cc = std::thread::hardware_concurrency();
   auto max_threads = std::max(hw_cc,decltype(hw_cc){1});
 
+#ifdef LBANN_HAS_OPENMP
   auto omp_threads = omp_get_max_threads();
+#else
+  auto omp_threads = 1;
+#endif // LBANN_HAS_OPENMP
   auto processes_on_node = comm->get_procs_per_node();
 
   auto aluminum_threads = 0;
@@ -51,7 +58,11 @@ int free_core_offset(const lbann_comm *comm) {
   auto hw_cc = std::thread::hardware_concurrency();
   auto max_threads = std::max(hw_cc,decltype(hw_cc){1});
 
+#ifdef LBANN_HAS_OPENMP
   auto omp_threads = omp_get_max_threads();
+#else
+  auto omp_threads = 1;
+#endif // LBANN_HAS_OPENMP
   auto processes_on_node = comm->get_procs_per_node();
 
   auto aluminum_threads = 0;

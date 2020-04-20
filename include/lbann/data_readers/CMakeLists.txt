@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_full_path(THIS_DIR_HEADERS
+set_source_path(THIS_DIR_HEADERS
   compound_data_reader.hpp
   data_reader.hpp
   data_reader_cifar10.hpp

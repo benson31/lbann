@@ -35,6 +35,10 @@
 #include "lbann/callbacks/save_model.hpp"
 #include "lbann/callbacks/load_model.hpp"
 
+#ifdef LBANN_HAS_OPENMP
+#include <omp.h>
+#endif // LBANN_HAS_OPENMP
+
 #include <lbann.pb.h>
 #include <model.pb.h>
 
@@ -358,7 +362,11 @@ void print_lbann_configuration(lbann_comm *comm, int io_threads_per_process, int
   std::cout << "Hardware properties (for master process)" << std::endl
             << "  Processes on node          : " << comm->get_procs_per_node() << std::endl
             << "  Total number of processes  : " << comm->get_procs_in_world() << std::endl
+#ifdef LBANN_HAS_OPENMP
             << "  OpenMP threads per process : " << omp_get_max_threads() << std::endl
+#else
+            << "  OpenMP threads per process : " << 1 << " (OMP disabled!)" << std::endl
+#endif // LBANN_HAS_OPENMP
             << "  I/O threads per process (+offset) : " << io_threads_per_process
             << " (+" << io_threads_offset << ")" << std::endl;
 #ifdef HYDROGEN_HAVE_CUDA

@@ -34,7 +34,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>           // sysconf
-#include <omp.h>
 
 /* __USE_GNU is needed for CPU_ISSET definition */
 #ifndef __USE_GNU
@@ -47,6 +46,10 @@
 #ifdef HPM
 #include "libhpc.h"
 #endif
+
+#ifdef LBANN_HAS_OPENMP
+#include <omp.h>
+#endif LBANN_HAS_OPENMP
 
 #ifdef MPI_VERSION
 #define MPI_CHECK( arg )			   \
@@ -111,6 +114,7 @@ int get_affinity(uint8_t *cpus, uint8_t *count)
   return 0;
 }
 
+#ifdef LBANN_HAS_OPENMP
 void th_print_affinity(int rank, int np, char *host)
 {
   int nc;
@@ -119,7 +123,6 @@ void th_print_affinity(int rank, int np, char *host)
   uint8_t i, *cpus, count=0;
   int tid = omp_get_thread_num();
   int nthreads = omp_get_num_threads();
-
 
   cpus = (uint8_t *) malloc(sizeof(uint8_t) * get_num_pus());
   get_affinity(cpus, &count);
@@ -133,6 +136,12 @@ void th_print_affinity(int rank, int np, char *host)
   }
   printf("  %s %s\n", host, buf);
 }
+#else
+void th_print_affinity(int rank, int np, char *host)
+{
+  printf(" (NO OPENMP!) rank: %d np: %d host: %s\n", rank, np, host);
+}
+#endif // LBANN_HAS_OPENMP
 
 void print_affinity(int rank, int np, char *host)
 {

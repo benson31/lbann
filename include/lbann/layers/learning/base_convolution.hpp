@@ -40,7 +40,10 @@
 #include "lbann/utils/distconv.hpp"
 
 #include <vector>
+
+#ifdef LBANN_HAS_OPENMP
 #include <omp.h>
+#endif // LBANN_HAS_OPENMP
 
 namespace lbann {
 

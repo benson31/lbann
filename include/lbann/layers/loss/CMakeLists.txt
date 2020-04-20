@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_full_path(THIS_DIR_HEADERS
+set_source_path(THIS_DIR_HEADERS
   cross_entropy.hpp
   l1_norm.hpp
   l2_norm2.hpp

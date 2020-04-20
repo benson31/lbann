@@ -29,7 +29,7 @@ if (LBANN_HAS_PTHREAD_SETAFFINITY_NP AND LBANN_HAS_PTHREAD_GETAFFINITY_NP)
 endif ()
 
 # Add the source files for this directory
-set_full_path(THIS_DIR_SOURCES
+set_source_path(THIS_DIR_SOURCES
   thread_pool.cpp
   thread_utils.cpp
 )

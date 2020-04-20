@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_full_path(THIS_DIR_SOURCES
+set_source_path(THIS_DIR_SOURCES
   sgd_training_algorithm.cpp
   training_algorithm.cpp
   )

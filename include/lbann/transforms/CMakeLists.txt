@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_full_path(THIS_DIR_HEADERS
+set_source_path(THIS_DIR_HEADERS
   normalize.hpp
   repack_HWC_to_CHW_layout.hpp
   sample_normalize.hpp

@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_full_path(THIS_DIR_HEADERS
+set_source_path(THIS_DIR_HEADERS
   callback.hpp
   check_dataset.hpp
   check_gradients.hpp

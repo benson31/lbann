@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_full_path(THIS_DIR_SOURCES
+set_source_path(THIS_DIR_SOURCES
   data_reader.cpp
   data_reader_cifar10.cpp
   data_reader_csv.cpp

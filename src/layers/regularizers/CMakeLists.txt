@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_full_path(THIS_DIR_SOURCES
+set_source_path(THIS_DIR_SOURCES
   batch_normalization.cpp
   dropout.cpp
   entrywise_batch_normalization.cpp
@@ -11,7 +11,7 @@ set_full_path(THIS_DIR_SOURCES
 
 if (LBANN_HAS_CUDA)
   # Add the CUDA source files for this directory
-  set_full_path(THIS_DIR_CU_SOURCES
+  set_source_path(THIS_DIR_CU_SOURCES
     batch_normalization.cu
     entrywise_batch_normalization.cu
     instance_norm.cu

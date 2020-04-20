@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_full_path(THIS_DIR_SOURCES
+set_source_path(THIS_DIR_SOURCES
   objective_function.cpp
   objective_function_term.cpp
   layer_term.cpp

@@ -70,7 +70,7 @@ if (LBANN_HAS_PROTOBUF)
 endif (LBANN_HAS_PROTOBUF)
 
 # Add the source files for this directory
-set_full_path(THIS_DIR_SOURCES
+set_source_path(THIS_DIR_SOURCES
   init_image_data_readers.cpp
   proto_common.cpp
   helpers.cpp

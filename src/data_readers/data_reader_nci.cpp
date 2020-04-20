@@ -29,7 +29,10 @@
 #include "lbann/data_readers/data_reader_nci.hpp"
 #include <cstdio>
 #include <string>
-#include <omp.h>
+
+#ifdef LBANN_HAS_OPENMP
+#include <omp.h> // unused?
+#endif // LBANN_HAS_OPENMP
 
 namespace lbann {
 

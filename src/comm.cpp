@@ -31,8 +31,12 @@
 #include "lbann/utils/timer.hpp"
 #include "lbann/utils/exception.hpp"
 #include "lbann/utils/cuda.hpp"
-#include "mpi.h"
-#include "omp.h"
+#include <mpi.h>
+
+#ifdef LBANN_HAS_OPENMP
+#include <omp.h>
+#endif // LBANN_HAS_OPENMP
+
 #include <sstream>
 #include <thread>
 
@@ -559,6 +563,7 @@ void lbann_comm::setup_node_comm() {
   }
 }
 
+// TODO: does this need to change without OMP?
 void lbann_comm::setup_threads() {
   const char* env_num_threads = getenv("OMP_NUM_THREADS");
   if (env_num_threads != nullptr){
@@ -570,11 +575,15 @@ void lbann_comm::setup_threads() {
   reset_threads();
 }
 
+#ifdef LBANN_HAS_OPENMP
 void lbann_comm::reset_threads() {
   if (threads_per_proc != omp_get_max_threads()) {
     omp_set_num_threads(threads_per_proc);
   }
 }
+#else
+void lbann_comm::reset_threads() {}
+#endif // LBANN_HAS_OPENMP
 
 const El::mpi::Comm& lbann_comm::get_packed_group_comm(int num_per_group) const {
   if (group_communicators.count(num_per_group) == 0) {

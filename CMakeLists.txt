@@ -104,6 +104,8 @@ option(LBANN_WITH_CONDUIT "Enable Conduit library" ON)
 
 option(LBANN_WITH_CUDNN "Include Nvidia cuDNN" ON)
 
+option(LBANN_WITH_ROCM "Build LBANN for AMDGPU" OFF)
+
 option(LBANN_WITH_DIHYDROGEN "Build with DiHydrogen support" OFF)
 if (LBANN_WITH_DIHYDROGEN)
   message(WARNING "DiHydrogen support is currently expermimental. "
@@ -235,20 +237,21 @@ if (Aluminum_FOUND)
   set(LBANN_WITH_ALUMINUM ON CACHE BOOL "Use aluminum." FORCE)
 endif ()
 
-include(SetupOpenMP)
+#include(SetupOpenMP)
 include(SetupMPI)
 include(SetupProtobuf)
 
 # OpenCV installs a CMake configure file we can exploit
 find_package(OpenCV NO_MODULE QUIET
-  HINTS ${OpenCV_DIR} ${OPENCV_DIR} $ENV{OpenCV_DIR} $ENV{OPENCV_DIR}
-  PATH_SUFFIXES share/OpenCV
-  NO_DEFAULT_PATH)
+ HINTS ${OpenCV_DIR} ${OPENCV_DIR} $ENV{OpenCV_DIR} $ENV{OPENCV_DIR}
+ PATH_SUFFIXES share/OpenCV
+ NO_DEFAULT_PATH)
 if (NOT OpenCV_FOUND)
-  find_package(OpenCV NO_MODULE QUIET REQUIRED)
+ find_package(OpenCV NO_MODULE QUIET REQUIRED)
 endif ()
 message(STATUS "Found OpenCV: ${OpenCV_DIR}")
 set(LBANN_HAS_OPENCV ${OpenCV_FOUND})
+#set(LBANN_HAS_OPENCV OFF) # hipcc doesn't have some intrinsics, doesn't compile cvRound with sse(!). However, this doesn't work
 
 # CUDA-ness of LBANN is 1:1 with Hydrogen. Iff Hydrogen has CUDA, LBANN gets CUDA.
 set(LBANN_HAS_CUDA ${_HYDROGEN_HAVE_CUDA})
@@ -547,6 +550,13 @@ add_subdirectory(docs)
 add_subdirectory(include)
 add_subdirectory(src)
 
+# TODO: put these before SetupOpenMP, make an actual option?
+if (LBANN_HAS_ROCM)
+  set(LBANN_HAS_OPENMP OFF)
+else ()
+  set(LBANN_HAS_OPENMP ON)
+endif (LBANN_HAS_ROCM)
+
 # Write the configure file
 configure_file(
   "${CMAKE_SOURCE_DIR}/cmake/configure_files/lbann_config.hpp.in"
@@ -554,11 +564,19 @@ configure_file(
   @ONLY)
 
 # Create the LBANN library
-add_library(lbann ${LBANN_SOURCES} ${LBANN_HEADERS} ${LBANN_CUDA_SOURCES})
+if (LBANN_HAS_ROCM)
+  hipify_source_files(LBANN_HIP_SOURCES ${LBANN_SOURCES} ${LBANN_CUDA_SOURCES})
+  hipify_header_files(LBANN_HIP_HEADERS ${LBANN_HEADERS})
+
+  hip_add_library(lbann "${LBANN_HIP_SOURCES}" "${LBANN_HIP_HEADERS}")
+else ()
+  add_library(lbann ${LBANN_SOURCES} ${LBANN_HEADERS} ${LBANN_CUDA_SOURCES})
+  target_include_directories(lbann PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)
+endif ()
 
 target_include_directories(lbann PUBLIC
   $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}>)
 
 # Use the IMPORTED targets when possible.
@@ -566,7 +584,7 @@ target_link_libraries(lbann PUBLIC LbannProto)
 target_link_libraries(lbann PUBLIC Threads::Threads)
 target_link_libraries(lbann PUBLIC clara::clara)
 target_link_libraries(lbann PUBLIC cereal)
-target_link_libraries(lbann PUBLIC OpenMP::OpenMP_CXX)
+#target_link_libraries(lbann PUBLIC OpenMP::OpenMP_CXX)
 target_link_libraries(lbann PUBLIC MPI::MPI_CXX)
 target_link_libraries(lbann PUBLIC protobuf::libprotobuf)
 target_link_libraries(lbann PUBLIC ${HYDROGEN_LIBRARIES})

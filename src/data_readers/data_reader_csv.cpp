@@ -29,7 +29,10 @@
 #include <unordered_set>
 #include "lbann/data_readers/data_reader_csv.hpp"
 #include "lbann/utils/options.hpp"
+
+#ifdef LBANN_HAS_OPENMP
 #include <omp.h>
+#endif // LBANN_HAS_OPENMP
 
 namespace lbann {
 
@@ -354,7 +357,11 @@ std::vector<DataType> csv_reader::fetch_line_label_response(
 
 std::string csv_reader::fetch_raw_line(int data_id) {
 static int n = 0;
+#ifdef LBANN_HAS_OPENMP
   std::ifstream& ifs = *m_ifstreams[omp_get_thread_num()];
+#else
+  std::ifstream& ifs = *m_ifstreams[0];
+#endif // LBANN_HAS_OPENMP
   // Seek to the start of this datum's line.
   ifs.seekg(m_index[data_id], std::ios::beg);
   // Compute the length of the line to read, excluding newline.
@@ -386,8 +393,13 @@ void csv_reader::skip_rows(std::ifstream& s, int rows) {
 }
 
 void csv_reader::setup_ifstreams() {
+#ifdef LBANN_HAS_OPENMP
   m_ifstreams.resize(omp_get_max_threads());
   for (int i = 0; i < omp_get_max_threads(); ++i) {
+#else
+  m_ifstreams.resize(1);
+  for (int i = 0; i < 1; ++i) {
+#endif // LBANN_HAS_OPENMP
     m_ifstreams[i] = new std::ifstream(
       get_file_dir() + get_data_filename(), std::ios::in | std::ios::binary);
     if (m_ifstreams[i]->fail()) {

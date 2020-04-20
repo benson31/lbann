@@ -28,7 +28,10 @@
 #define LBANN_OMP_PRAGMA_HPP
 
 #include "lbann_config.hpp"
+
+#ifdef LBANN_HAS_OPENMP
 #include <omp.h>
+#endif // LBANN_HAS_OPENMP
 
 /// Allow OpenMP parallel for loops to be replaced with taskloop constructs
 /// Requires OpenMP 5.0 support for taskloop reduction clauses

@@ -28,7 +28,10 @@
 
 #include "lbann/data_readers/data_reader_mesh.hpp"
 #include "lbann/utils/glob.hpp"
+
+#ifdef LBANN_HAS_OPENMP
 #include <omp.h>
+#endif // LBANN_HAS_OPENMP
 
 namespace lbann {
 
@@ -47,7 +50,11 @@ void mesh_reader::load() {
   }
   m_num_samples = matches.size();
   // Set up buffers to load data into.
+#ifdef LBANN_HAS_OPENMP
   m_load_bufs.resize(omp_get_max_threads());
+#else
+  m_load_bufs.resize(1);
+#endif // LBANN_HAS_OPENMP
   for (auto&& buf : m_load_bufs) {
     buf.resize(m_data_height * m_data_width);
   }
@@ -96,7 +103,11 @@ void mesh_reader::load_file(int data_id, const std::string channel, Mat& mat) {
     throw lbann_exception("mesh_reader: failed to open " + filename);
   }
   // Load into a local buffer.
+#ifdef LBANN_HAS_OPENMP
   DataType* buf = m_load_bufs[omp_get_thread_num()].data();
+#else
+  DataType* buf = m_load_bufs[0].data();
+#endif // LBANN_HAS_OPENMP
   if (!f.read((char*) buf, m_data_height * m_data_width * sizeof(float))) {
     throw lbann_exception("mesh_reader: failed to read " + filename);
   }

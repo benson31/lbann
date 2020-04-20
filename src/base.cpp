@@ -28,7 +28,10 @@
 
 #include "lbann/base.hpp"
 
-#include <omp.h>
+#ifdef LBANN_HAS_OPENMP
+#include <omp.h> // unused?
+#endif // LBANN_HAS_OPENMP
+
 #if defined(LBANN_TOPO_AWARE)
 #include <hwloc.h>
 #if defined(HWLOC_API_VERSION) && (HWLOC_API_VERSION < 0x00010b00)

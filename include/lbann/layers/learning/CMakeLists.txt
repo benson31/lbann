@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_full_path(THIS_DIR_HEADERS
+set_source_path(THIS_DIR_HEADERS
   base_convolution.hpp
   channelwise_scale_bias.hpp
   channelwise_fully_connected.hpp

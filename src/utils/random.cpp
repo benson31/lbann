@@ -24,7 +24,10 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef LBANN_HAS_OPENMP
 #include <omp.h>
+#endif // LBANN_HAS_OPENMP
+
 #define LBANN_RANDOM_INSTANTIATE
 #include "lbann/utils/random.hpp"
 #include "lbann/io/file_io.hpp"
@@ -242,6 +245,7 @@ bool load_rng_from_checkpoint(persist& p, const lbann_comm* comm) {
     rng_fast >> ::fast_generator;
    }
 #else
+   {
     rng_name = dirname + "/rng_generator_" + rank_in_trainer;
     std::ifstream rng(rng_name);
     if(!rng) { LBANN_ERROR("Failed to open ", rng_name); }

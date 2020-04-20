@@ -44,13 +44,15 @@
 #include <type_traits>// is_same
 #include <set>
 #include <map>
-#include <omp.h>
 #include "lbann/utils/timer.hpp"
 #include "lbann/utils/glob.hpp"
 #include "lbann/utils/peek_map.hpp"
 #include "conduit/conduit_relay.hpp"
 #include "conduit/conduit_relay_io_hdf5.hpp"
 
+#ifdef LBANN_HAS_OPENMP
+#include <omp.h> // unused?
+#endif // LBANN_HAS_OPENMP
 
 #include <cereal/archives/binary.hpp>
 #include <sstream>

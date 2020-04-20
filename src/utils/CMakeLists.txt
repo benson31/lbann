@@ -1,6 +1,6 @@
 
 # Add the source files for this directory
-set_full_path(THIS_DIR_SOURCES
+set_source_path(THIS_DIR_SOURCES
   argument_parser.cpp
   cnpy_utils.cpp
   cublas.cpp
@@ -37,7 +37,7 @@ endif (LBANN_HAS_HALF)
 
 if (LBANN_HAS_CUDA)
   # Add the CUDA source files for this directory
-  set_full_path(THIS_DIR_CU_SOURCES
+  set_source_path(THIS_DIR_CU_SOURCES
     cuda.cu
     nvshmem.cu
     )
