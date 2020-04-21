@@ -52,11 +52,11 @@ public:
   /** Copy constructor. */
   sgd_execution_context(const sgd_execution_context& other) = default;
   /** Copy assignment operator. */
-  sgd_execution_context& operator=(const sgd_execution_context& other) = default;
+  sgd_execution_context& operator=(const sgd_execution_context& other) = delete;
   /** Move constructor. */
   sgd_execution_context(sgd_execution_context&& other) = default;
   /** Move assignment operator. */
-  sgd_execution_context& operator=(sgd_execution_context&& other) = default;
+  sgd_execution_context& operator=(sgd_execution_context&& other) = delete;
   /** Copy sgd_execution_context. */
   virtual std::unique_ptr<execution_context> copy_execution_context() const { return make_unique<sgd_execution_context>(*this); }
 

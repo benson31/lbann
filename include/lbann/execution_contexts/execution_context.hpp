@@ -141,11 +141,11 @@ protected:
   /** Copy constructor. */
   execution_context(const execution_context& other) = default;
   /** Copy assignment operator. */
-  execution_context& operator=(const execution_context& other) = default;
+  execution_context& operator=(const execution_context& other) = delete;
   /** Move constructor. */
   execution_context(execution_context&& other) = default;
   /** Move assignment operator. */
-  execution_context& operator=(execution_context&& other) = default;
+  execution_context& operator=(execution_context&& other) = delete;
 
 private:
   /** Pointer to the training context (execution environment) for the training algorithm */
