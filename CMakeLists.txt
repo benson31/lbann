@@ -237,7 +237,7 @@ if (Aluminum_FOUND)
   set(LBANN_WITH_ALUMINUM ON CACHE BOOL "Use aluminum." FORCE)
 endif ()
 
-#include(SetupOpenMP)
+include(SetupOpenMP)
 include(SetupMPI)
 include(SetupProtobuf)
 
