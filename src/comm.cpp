@@ -30,7 +30,7 @@
 #include "lbann/comm.hpp"
 #include "lbann/utils/timer.hpp"
 #include "lbann/utils/exception.hpp"
-#include "lbann/utils/cuda.hpp"
+
 #include <mpi.h>
 
 #ifdef LBANN_HAS_OPENMP

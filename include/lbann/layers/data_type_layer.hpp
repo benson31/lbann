@@ -403,12 +403,12 @@ private:
   void setup_distconv_adapter() override;
 #endif // LBANN_HAS_DISTCONV
 
-#ifdef LBANN_HAS_CUDA
+#ifdef LBANN_HAS_CUDNN
   template <typename U>
   friend class cudnn::data_parallel_layer_tensor_manager;
   template <typename U>
   friend class cudnn::entrywise_layer_tensor_manager;
-#endif // LBANN_HAS_CUDA
+#endif // LBANN_HAS_CUDNN
 };
 
 #ifndef LBANN_DATA_TYPE_LAYER_INSTANTIATE

@@ -27,7 +27,11 @@
 #ifndef LBANN_LAYER_EVALUATION_HPP_INCLUDED
 #define LBANN_LAYER_EVALUATION_HPP_INCLUDED
 
+#include "lbann_config.hpp"
 #include "lbann/layers/transform/transform.hpp"
+#ifdef LBANN_HAS_GPU
+#include "lbann/utils/gpu/event_wrapper.hpp"
+#endif // LBANN_HAS_GPU
 
 namespace lbann {
 
@@ -71,8 +75,8 @@ private:
   /** Non-blocking allreduce request. */
   Al::request m_allreduce_req;
 #ifdef LBANN_HAS_GPU
-  /** CUDA event after a non-blocking GPU-CPU memory copy. */
-  cuda::event_wrapper m_copy_event;
+  /** @brief GPU event after a non-blocking GPU-CPU memory copy. */
+  gpu::event_wrapper m_copy_event;
 #endif // LBANN_HAS_GPU
 
 };

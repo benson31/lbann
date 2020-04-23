@@ -27,7 +27,11 @@
 #ifndef LBANN_OBJECTIVE_FUNCTIONS_WEIGHT_REGULARIZATION_L2_WEIGHT_REGULARIZATION_HPP_INCLUDED
 #define LBANN_OBJECTIVE_FUNCTIONS_WEIGHT_REGULARIZATION_L2_WEIGHT_REGULARIZATION_HPP_INCLUDED
 
+#include "lbann_config.hpp"
 #include "lbann/objective_functions/objective_function_term.hpp"
+#ifdef LBANN_HAS_GPU
+#include "lbann/utils/gpu/event_wrapper.hpp"
+#endif // LBANN_HAS_GPU
 
 namespace lbann {
 
@@ -88,8 +92,8 @@ private:
   /** For non-blocking allreduces. */
   Al::request m_allreduce_req;
 #ifdef LBANN_HAS_GPU
-  /** For non-blocking GPU-CPU memory copies. */
-  cuda::event_wrapper m_copy_event;
+  /** @brief For non-blocking GPU-CPU memory copies. */
+  gpu::event_wrapper m_copy_event;
 #endif // LBANN_HAS_GPU
 
   /** Add the sum of squares of @c vals to @c contribution.

@@ -78,223 +78,44 @@
 
 
 namespace lbann {
-
-// Forward declaration
-class Layer;
-
 namespace cudnn {
 
-template <typename T>
-struct ScalingParameterT
-{
-  using type = T;
-};
+/** @name Common typedefs */
+///@{
+
+using DataType_t = cudnnDataType_t;
+using Handle_t = cudnnHandle_t;
+
+using ActivationDescriptor_t = cudnnActivationDescriptor_t;
+using ConvolutionDescriptor_t = cudnnConvolutionDescriptor_t;
+using FilterDescriptor_t = cudnnFilterDescriptor_t;
+using TensorDescriptor_t = cudnnTensorDescriptor_t;
+
+using ConvolutionFwdAlgo_t = cudnnConvolutionFwdAlgo_t;
+using ConvolutionBwdDataAlgo_t = cudnnConvolutionBwdDataAlgo_t;
+using ConvolutionBwdFilterAlgo_t = cudnnConvolutionBwdFilterAlgo_t;
+
+///@}
+
+namespace details {
 
 template <typename T>
-using ScalingParamType = typename ScalingParameterT<T>::type;
+struct ConvertDataTypeV;
+
+#define ADD_CUDNN_DATATYPE(TYPE,ENUMVAL)        \
+  template <>                                   \
+  struct ConvertDataTypeV<TYPE>                 \
+  {                                             \
+    static constexpr auto value = ENUMVAL;      \
+  }
 
 #ifdef LBANN_HAS_GPU_FP16
-template <>
-struct ScalingParameterT<fp16>
-{
-  using type = float;
-};
-#endif // LBANN_USE_GPU_FP16
+ADD_CUDNN_DATATYPE(fp16, CUDNN_DATA_HALF);
+#endif // LBANN_HAS_GPU_FP16
+ADD_CUDNN_DATATYPE(float, CUDNN_DATA_FLOAT);
+ADD_CUDNN_DATATYPE(double, CUDNN_DATA_DOUBLE);
 
-////////////////////////////////////////////////////////////
-// Global cuDNN objects
-////////////////////////////////////////////////////////////
-
-/** Initialize global cuDNN objects. */
-void initialize();
-/** Destroy global cuDNN objects. */
-void destroy();
-/** Get cuDNN handle.
- *  This resets the active CUDA device and stream to the Hydrogen
- *  defaults. The cuDNN handle is initialized if needed.
- */
-cudnnHandle_t& get_handle();
-
-////////////////////////////////////////////////////////////
-// Helper functions for cuDNN types
-////////////////////////////////////////////////////////////
-
-/** Get cuDNN data type associated with DataType. */
-template <typename TensorDataType>
-cudnnDataType_t get_data_type();
-
-/** Set cuDNN tensor descriptor.
- *  desc is created if necessary.
- */
-template <typename TensorDataType>
-void set_tensor_desc(cudnnTensorDescriptor_t& desc,
-                     std::vector<int> dims,
-                     std::vector<int> strides = {});
-
-/** Copy cuDNN tensor descriptor.
- *  dst is created or destroyed if needed.
- */
-void copy_tensor_desc(const cudnnTensorDescriptor_t& src,
-                      cudnnTensorDescriptor_t& dst);
-
-/** Copy cuDNN activation descriptor.
- *  dst is created or destroyed if needed.
- */
-void copy_activation_desc(const cudnnActivationDescriptor_t& src,
-                          cudnnActivationDescriptor_t& dst);
-
-////////////////////////////////////////////////////////////
-// cuDNN tensor managers
-////////////////////////////////////////////////////////////
-
-/** Manager for a layer's cuDNN tensor descriptors. */
-template <typename TensorDataType>
-class layer_tensor_manager {
-public:
-  using LayerType = data_type_layer<TensorDataType>;
-public:
-  layer_tensor_manager(const LayerType* l = nullptr);
-  layer_tensor_manager(const layer_tensor_manager& other);
-  layer_tensor_manager& operator=(const layer_tensor_manager& other);
-  virtual ~layer_tensor_manager();
-
-  /** Get the layer being managed. */
-  const LayerType* get_layer() const { return m_layer; }
-  /** Set the layer being managed. */
-  void set_layer(const LayerType* l);
-
-  /** Get cuDNN tensor descriptor for layer input. */
-  virtual cudnnTensorDescriptor_t& get_prev_activations(int parent_index = 0) = 0;
-  /** Get cuDNN tensor descriptor for layer output. */
-  virtual cudnnTensorDescriptor_t& get_activations(int child_index = 0) = 0;
-  /** Get cuDNN tensor descriptor for gradient w.r.t. layer output. */
-  virtual cudnnTensorDescriptor_t& get_prev_error_signals(int child_index = 0) = 0;
-  /** Get cuDNN tensor descriptor for gradient w.r.t. layer input. */
-  virtual cudnnTensorDescriptor_t& get_error_signals(int parent_index = 0) = 0;
-
-protected:
-
-  /** Set number of tensor descriptors corresponding to layer inputs. */
-  void set_num_parents(int num_parents);
-  /** Set number of tensor descriptors corresponding to layer outputs. */
-  void set_num_children(int num_children);
-
-  /** Layer being managed. */
-  const LayerType* m_layer;
-  /** cuDNN tensor descriptors for layer inputs. */
-  std::vector<cudnnTensorDescriptor_t> m_prev_activations;
-  /** cuDNN tensor descriptors for layer outputs. */
-  std::vector<cudnnTensorDescriptor_t> m_activations;
-  /** cuDNN tensor descriptors for gradients w.r.t. layer outputs. */
-  std::vector<cudnnTensorDescriptor_t> m_prev_error_signals;
-  /** cuDNN tensor descriptors for gradients w.r.t. layer inputs. */
-  std::vector<cudnnTensorDescriptor_t> m_error_signals;
-
-};
-
-/** Manager for a data-parallel layer's cuDNN tensor descriptors. */
-template <typename TensorDataType>
-class data_parallel_layer_tensor_manager : public layer_tensor_manager<TensorDataType> {
-public:
-  using LayerType = data_type_layer<TensorDataType>;
-public:
-  data_parallel_layer_tensor_manager(const LayerType* l = nullptr);
-  data_parallel_layer_tensor_manager(
-    const data_parallel_layer_tensor_manager& other) = default;
-  data_parallel_layer_tensor_manager&
-    operator=(const data_parallel_layer_tensor_manager& other) = default;
-  ~data_parallel_layer_tensor_manager() = default;
-  cudnnTensorDescriptor_t& get_prev_activations(int parent_index = 0) override;
-  cudnnTensorDescriptor_t& get_activations(int child_index = 0) override;
-  cudnnTensorDescriptor_t& get_prev_error_signals(int child_index = 0) override;
-  cudnnTensorDescriptor_t& get_error_signals(int parent_index = 0) override;
-};
-
-/** Manager for an entry-wise layer's cuDNN tensor descriptors. */
-template <typename TensorDataType>
-class entrywise_layer_tensor_manager : public layer_tensor_manager<TensorDataType> {
-public:
-  using LayerType = data_type_layer<TensorDataType>;
-public:
-  entrywise_layer_tensor_manager(const LayerType* l = nullptr);
-  entrywise_layer_tensor_manager(
-    const entrywise_layer_tensor_manager& other) = default;
-  entrywise_layer_tensor_manager&
-    operator=(const entrywise_layer_tensor_manager& other) = default;
-  ~entrywise_layer_tensor_manager() = default;
-  cudnnTensorDescriptor_t& get_prev_activations(int parent_index = 0) override;
-  cudnnTensorDescriptor_t& get_activations(int child_index = 0) override;
-  cudnnTensorDescriptor_t& get_prev_error_signals(int child_index = 0) override;
-  cudnnTensorDescriptor_t& get_error_signals(int parent_index = 0) override;
-};
-
-////////////////////////////////////////////////////////////
-// cuDNN algorithm selection
-////////////////////////////////////////////////////////////
-
-/**
- * Select a forward convolution algorithm.
- *
- * If autotuning, memory for cuDNN algorithm runs is needed and should be
- * provided via the pointer arguments.
- *
- * @param autotune True to attempt all cuDNN algorithms and select the fastest.
- * @param deterministic True to require deterministic algorithms.
- */
-cudnnConvolutionFwdAlgo_t get_fwd_algorithm(
-  bool autotune,
-  bool deterministic,
-  const cudnnTensorDescriptor_t& input_desc,
-  const void* input,
-  const cudnnFilterDescriptor_t& kernel_desc,
-  const void* kernel,
-  const cudnnConvolutionDescriptor_t& conv_desc,
-  const cudnnTensorDescriptor_t& output_desc,
-  void* output,
-  size_t ws_size,
-  void* ws);
-
-/** Select a backward data convolution algorithm.
- *
- * If autotuning, memory for cuDNN algorithm runs is needed and should be
- * provided via the pointer arguments.
- *
- * @param autotune True to attempt all cuDNN algorithms and select the fastest.
- * @param deterministic True to require deterministic algorithms.
- */
-cudnnConvolutionBwdDataAlgo_t get_bwd_data_algorithm(
-  bool autotune,
-  bool deterministic,
-  const cudnnFilterDescriptor_t& kernel_desc,
-  const void* kernel,
-  const cudnnTensorDescriptor_t& prev_error_signal_desc,
-  const void* prev_error_signal,
-  const cudnnConvolutionDescriptor_t& conv_desc,
-  const cudnnTensorDescriptor_t& error_signal_desc,
-  void* error_signal,
-  size_t ws_size,
-  void* ws);
-
-/** Select a backward filter convolution algorithm.
- *
- * If autotuning, memory for cuDNN algorithm runs is needed and should be
- * provided via the pointer arguments.
- *
- * @param autotune True to attempt all cuDNN algorithms and select the fastest.
- * @param deterministic True to require deterministic algorithms.
- */
-cudnnConvolutionBwdFilterAlgo_t get_bwd_filter_algorithm(
-  bool autotune,
-  bool deterministic,
-  const cudnnTensorDescriptor_t& input_desc,
-  const void* input,
-  const cudnnTensorDescriptor_t& prev_error_signal_desc,
-  const void* prev_error_signal,
-  const cudnnConvolutionDescriptor_t& conv_desc,
-  const cudnnFilterDescriptor_t& kernel_gradient_desc,
-  void* kernel_gradient,
-  size_t ws_size,
-  void* ws);
+}// namespace details
 
 /** @brief Set the default to use tensor core operations, allowing
  *         FP32->FP16 conversions.
@@ -309,6 +130,5 @@ cudnnMathType_t get_default_convolution_math_type() noexcept;
 
 } // namespace cudnn
 } // namespace lbann
-
 #endif // LBANN_HAS_CUDNN
 #endif // LBANN_UTILS_CUDNN_HPP

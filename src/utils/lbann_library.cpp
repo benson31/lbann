@@ -369,9 +369,9 @@ void print_lbann_configuration(lbann_comm *comm, int io_threads_per_process, int
 #endif // LBANN_HAS_OPENMP
             << "  I/O threads per process (+offset) : " << io_threads_per_process
             << " (+" << io_threads_offset << ")" << std::endl;
-#ifdef HYDROGEN_HAVE_CUDA
-  std::cout << "  GPUs on node               : " << El::GPUManager::NumDevices() << std::endl;
-#endif // HYDROGEN_HAVE_CUDA
+#ifdef LBANN_HAS_GPU
+  std::cout << "  GPUs on node               : " << El::gpu::DeviceCount() << std::endl;
+#endif // LBANN_HAS_GPU
   std::cout << std::endl;
 
   // Report build settings

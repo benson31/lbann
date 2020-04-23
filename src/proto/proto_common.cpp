@@ -26,12 +26,30 @@
 
 #include "lbann/proto/proto_common.hpp"
 
-#include "lbann/lbann.hpp"
 #include "lbann/base.hpp"
 #include "lbann/comm.hpp"
+#include "lbann/data_readers/data_reader.hpp"
+#include "lbann/data_readers/data_reader_cifar10.hpp"
+#include "lbann/data_readers/data_reader_csv.hpp"
+#include "lbann/data_readers/data_reader_imagenet.hpp"
+#include "lbann/data_readers/data_reader_jag_conduit.hpp"
+#include "lbann/data_readers/data_reader_merge_features.hpp"
+#include "lbann/data_readers/data_reader_merge_samples.hpp"
+#include "lbann/data_readers/data_reader_mesh.hpp"
+#include "lbann/data_readers/data_reader_mnist.hpp"
+#include "lbann/data_readers/data_reader_nci.hpp"
+#include "lbann/data_readers/data_reader_npz_ras_lipid.hpp"
+#include "lbann/data_readers/data_reader_numpy.hpp"
+#include "lbann/data_readers/data_reader_numpy_npz.hpp"
+#include "lbann/data_readers/data_reader_numpy_npz_conduit.hpp"
+#include "lbann/data_readers/data_reader_pilot2_molecular.hpp"
+#include "lbann/data_readers/data_reader_python.hpp"
+#include "lbann/data_readers/data_reader_synthetic.hpp"
 #include "lbann/proto/init_image_data_readers.hpp"
 #include "lbann/proto/factories.hpp"
 #include "lbann/utils/file_utils.hpp"
+#include "lbann/utils/glob.hpp"
+#include "lbann/utils/peek_map.hpp"
 
 #include <lbann.pb.h>
 #include <reader.pb.h>

@@ -35,9 +35,6 @@
 #include "lbann/comm.hpp"
 #include "lbann/utils/exception.hpp"
 #include "lbann/utils/description.hpp"
-#ifdef LBANN_HAS_GPU
-#include "lbann/utils/cuda.hpp"
-#endif // LBANN_HAS_GPU
 #include <cereal/types/utility.hpp>
 
 namespace lbann {

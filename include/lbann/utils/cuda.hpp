@@ -192,36 +192,6 @@ struct array {
 #endif // __CUDACC__
 
 // -------------------------------------------------------------
-// Utilities for CUDA events
-// -------------------------------------------------------------
-
-/** Wrapper class for a CUDA event. */
-class event_wrapper {
-public:
-  event_wrapper();
-  event_wrapper(const event_wrapper& other);
-  event_wrapper& operator=(const event_wrapper& other);
-  ~event_wrapper();
-  /** Enqueue CUDA event on a CUDA stream. */
-  void record(cudaStream_t stream);
-  /** Check whether CUDA event has completed. */
-  bool query() const;
-  /** Wait until CUDA event has completed. */
-  void synchronize();
-  /** Get CUDA event object. */
-  cudaEvent_t& get_event();
-private:
-  /** CUDA event object.
-   *  The event object lifetime is managed internally.
-   */
-  cudaEvent_t m_event;
-  /** CUDA stream object.
-   *  The stream object lifetime is assumed to be managed externally.
-   */
-  cudaStream_t m_stream;
-};
-
-// -------------------------------------------------------------
 // Helper functions for entrywise operations
 // -------------------------------------------------------------
 #ifdef __CUDACC__

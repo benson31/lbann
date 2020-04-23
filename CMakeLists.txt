@@ -253,14 +253,26 @@ message(STATUS "Found OpenCV: ${OpenCV_DIR}")
 set(LBANN_HAS_OPENCV ${OpenCV_FOUND})
 #set(LBANN_HAS_OPENCV OFF) # hipcc doesn't have some intrinsics, doesn't compile cvRound with sse(!). However, this doesn't work
 
-# CUDA-ness of LBANN is 1:1 with Hydrogen. Iff Hydrogen has CUDA, LBANN gets CUDA.
+# CUDA-ness of LBANN is 1:1 with Hydrogen. Iff Hydrogen has CUDA,
+# LBANN gets CUDA.
 set(LBANN_HAS_CUDA ${_HYDROGEN_HAVE_CUDA})
 set(LBANN_WITH_CUDA ${LBANN_HAS_CUDA})
 
+set(LBANN_HAS_ROCM ${_HYDROGEN_HAVE_ROCM})
+
+if (LBANN_HAS_CUDA OR LBANN_HAS_ROCM)
+  set(LBANN_HAS_GPU TRUE)
+endif ()
+
 # Only used if have GPU and have CPU half.
-if (LBANN_HAS_CUDA AND LBANN_HAS_HALF)
+if (LBANN_HAS_GPU AND LBANN_HAS_HALF)
   set(LBANN_HAS_GPU_FP16 ${HYDROGEN_GPU_USE_FP16})
 endif ()
+
+if (LBANN_HAS_ROCM)
+  find_package(MIOpen CONFIG REQUIRED)
+  set(LBANN_HAS_MIOPEN TRUE)
+endif (LBANN_HAS_ROCM)
 
 if (LBANN_HAS_CUDA)
   enable_language(CUDA)
@@ -550,13 +562,6 @@ add_subdirectory(docs)
 add_subdirectory(include)
 add_subdirectory(src)
 
-# TODO: put these before SetupOpenMP, make an actual option?
-if (LBANN_HAS_ROCM)
-  set(LBANN_HAS_OPENMP OFF)
-else ()
-  set(LBANN_HAS_OPENMP ON)
-endif (LBANN_HAS_ROCM)
-
 # Write the configure file
 configure_file(
   "${CMAKE_SOURCE_DIR}/cmake/configure_files/lbann_config.hpp.in"
@@ -564,7 +569,7 @@ configure_file(
   @ONLY)
 
 # Create the LBANN library
-if (LBANN_HAS_ROCM)
+if (FALSE)
   hipify_source_files(LBANN_HIP_SOURCES ${LBANN_SOURCES} ${LBANN_CUDA_SOURCES})
   hipify_header_files(LBANN_HIP_HEADERS ${LBANN_HEADERS})
 
@@ -584,7 +589,7 @@ target_link_libraries(lbann PUBLIC LbannProto)
 target_link_libraries(lbann PUBLIC Threads::Threads)
 target_link_libraries(lbann PUBLIC clara::clara)
 target_link_libraries(lbann PUBLIC cereal)
-#target_link_libraries(lbann PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(lbann PUBLIC OpenMP::OpenMP_CXX)
 target_link_libraries(lbann PUBLIC MPI::MPI_CXX)
 target_link_libraries(lbann PUBLIC protobuf::libprotobuf)
 target_link_libraries(lbann PUBLIC ${HYDROGEN_LIBRARIES})
@@ -594,6 +599,9 @@ target_link_libraries(lbann PUBLIC ${CONDUIT_LIBRARIES})
 target_link_libraries(lbann PUBLIC
   $<TARGET_NAME_IF_EXISTS:H2::H2Meta>
   $<TARGET_NAME_IF_EXISTS:H2::H2Patterns>
+
+  # ROCm stuff
+  $<TARGET_NAME_IF_EXISTS:MIOpen>
   )
 
 if (LBANN_WITH_DISTCONV)

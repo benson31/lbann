@@ -24,10 +24,13 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "lbann/utils/dnn_primitives.hpp"
 #include "lbann/utils/cudnn.hpp"
+#include "lbann/utils/memory.hpp"
 #include "lbann/utils/number_theory.hpp"
 
-#include "El.hpp"
+#include <El.hpp>
+
 #include <iostream>
 #include <map>
 #include <unordered_map>
@@ -84,18 +87,6 @@ cudnnHandle_t& get_handle() {
 ////////////////////////////////////////////////////////////
 // Helper functions for cuDNN types
 ////////////////////////////////////////////////////////////
-
-template <typename TensorDataType>
-cudnnDataType_t get_data_type() {
-  LBANN_ERROR("invalid data type for cuDNN");
-  return CUDNN_DATA_FLOAT;
-}
-
-#ifdef LBANN_HAS_GPU_FP16
-template <> cudnnDataType_t get_data_type<fp16>() { return CUDNN_DATA_HALF; }
-#endif // LBANN_HAS_GPU_FP16
-template <> cudnnDataType_t get_data_type<float>() { return CUDNN_DATA_FLOAT; }
-template <> cudnnDataType_t get_data_type<double>() { return CUDNN_DATA_DOUBLE; }
 
 template <typename TensorDataType>
 void set_tensor_desc(cudnnTensorDescriptor_t& desc,

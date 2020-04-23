@@ -45,8 +45,8 @@
 #include "lbann/utils/omp_diagnostics.hpp"
 #include "lbann/utils/stack_trace.hpp"
 
-#ifdef LBANN_HAS_CUDNN
-#include "lbann/utils/cudnn.hpp"
+#ifdef LBANN_HAS_GPU
+#include "lbann/utils/dnn_primitives.hpp"
 #endif
 #ifdef LBANN_HAS_PYTHON
 #include "lbann/utils/python.hpp"
@@ -119,6 +119,9 @@ world_comm_ptr initialize(int& argc, char**& argv, int seed) {
   dc::initialize(MPI_COMM_WORLD);
 #endif // LBANN_HAS_DISTCONV
 
+#ifdef LBANN_HAS_GPU
+  dnn_primitive::initialize();
+#endif // LBANN_HAS_GPU
   return comm;
 }
 
@@ -130,8 +133,8 @@ void finalize(lbann_comm* comm) {
 #ifdef LBANN_HAS_DISTCONV
   dc::finalize();
 #endif
-#ifdef LBANN_HAS_CUDNN
-  cudnn::destroy();
+#ifdef LBANN_HAS_GPU
+  dnn_primitive::destroy();
 #endif
 #ifdef LBANN_HAS_PYTHON
   python::finalize();

@@ -33,6 +33,10 @@
 #include "lbann/models/model.hpp"
 #include "lbann/trainers/trainer.hpp"
 
+#ifdef LBANN_HAS_GPU
+#include "lbann/utils/gpu/event_wrapper.hpp"
+#endif // LBANN_HAS_GPU
+
 namespace lbann {
 
 /** @brief Slice tensor along a specified dimension.
@@ -105,12 +109,12 @@ private:
    *  asynchronously transferred to GPU.
    */
   std::vector<unsigned char> m_workspace;
-  /** @brief CUDA event for workspace buffer.
+  /** @brief GPU event for workspace buffer.
    *
    *  Makes sure asynchronous GPU memory transfers are completed
    *  before modifying workspace buffer.
    */
-  cuda::event_wrapper m_workspace_event;
+  gpu::event_wrapper m_workspace_event;
 #endif // LBANN_HAS_GPU
 
   template <typename U, El::Device D>

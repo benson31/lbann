@@ -27,11 +27,15 @@
 #ifndef LBANN_LAYERS_TRANSFORM_CONCATENATE_HPP_INCLUDED
 #define LBANN_LAYERS_TRANSFORM_CONCATENATE_HPP_INCLUDED
 
+#include "lbann_config.hpp"
 #include "lbann/layers/data_type_layer.hpp"
+#include "lbann/proto/proto_common.hpp"
 #include "lbann/utils/exception.hpp"
 #include "lbann/utils/distconv.hpp"
+#ifdef LBANN_HAS_GPU
+#include "lbann/utils/gpu/event_wrapper.hpp"
+#endif // LBANN_HAS_GPU
 
-#include <lbann/proto/proto_common.hpp>
 #include <layers.pb.h>
 
 namespace lbann {
@@ -91,12 +95,12 @@ private:
    *  asynchronously transferred to GPU.
    */
   std::vector<unsigned char> m_workspace;
-  /** @brief CUDA event for workspace buffer.
+  /** @brief GPU event for workspace buffer.
    *
    *  Makes sure asynchronous GPU memory transfers are completed
    *  before modifying workspace buffer.
    */
-  cuda::event_wrapper m_workspace_event;
+  gpu::event_wrapper m_workspace_event;
 #endif // LBANN_HAS_GPU
 
   template <typename U>
