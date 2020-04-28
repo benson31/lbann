@@ -26,7 +26,7 @@
 
 #define LBANN_SOFTMAX_LAYER_INSTANTIATE
 #include "lbann/layers/activations/softmax.hpp"
-#include "lbann/utils/cuda.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -36,8 +36,10 @@ namespace {
 /** Functor to ensure values are above threshold value */
 template <typename TensorDataType>
 struct threshold_op {
-  __forceinline__ __device__ TensorDataType operator()(const TensorDataType& y) const {
-    return cuda::max(y, cuda::sqrt(cuda::min<TensorDataType>()));
+  __forceinline__ __device__
+  TensorDataType operator()(const TensorDataType& y) const
+  {
+    return gpu_lib::max(y, gpu_lib::sqrt(gpu_lib::min<TensorDataType>()));
   }
 };
 #endif // LBANN_ENABLE_SOFTMAX_THRESHOLD
@@ -47,7 +49,7 @@ template <class T>
 struct max_op {
   __device__ __forceinline__
   DataType operator()(const T& x1, const T& x2) const {
-    return cuda::max(x1, x2);
+    return gpu_lib::max(x1, x2);
   }
 };
 
@@ -83,15 +85,15 @@ __global__ void reduce_max_kernel(size_t height,
   for (size_t col = bidy; col < width; col += nblocksy) {
 
     // Find largest value for each thread
-    TensorDataType thread_max_val{-cuda::infinity<DataType>()};
+    TensorDataType thread_max_val{-gpu_lib::infinity<DataType>()};
     for (size_t row = gidx; row < height; row += nthreadsx) {
       const auto& val = values[row+col*values_ldim];
-      thread_max_val = cuda::max(thread_max_val, val);
+      thread_max_val = gpu_lib::max(thread_max_val, val);
     }
 
     // Find largest value for each block
     const TensorDataType block_max_val
-      = cuda::block_reduce<bsize,1,1,DataType,max_op<DataType>>(thread_max_val);
+      = gpu_lib::block_reduce<bsize,1,1,DataType,max_op<DataType>>(thread_max_val);
     if (tid == 0) {
       max_values[bidx+col*nblocksx] = block_max_val;
     }
@@ -133,14 +135,14 @@ __global__ void fp_exp_kernel(size_t height,
     for (size_t row = gidx; row < height; row += nthreadsx) {
       const auto& x = input[row+col*input_ldim];
       auto& y = output[row+col*output_ldim];
-      y = cuda::exp(x-shift);
+      y = gpu_lib::exp(x-shift);
       thread_sum += y;
     }
 
     // Compute sum for each block
-    const TensorDataType block_sum = cuda::block_reduce<bsize,1,1>(thread_sum);
+    const TensorDataType block_sum = gpu_lib::block_reduce<bsize,1,1>(thread_sum);
     if (tid == 0) {
-      cuda::atomic_add(&sums[col], block_sum);
+      gpu_lib::atomic_add(&sums[col], block_sum);
     }
 
   }
@@ -178,7 +180,7 @@ __global__ void fp_output_kernel(size_t height,
       auto& y = output[row+col*output_ldim];
       y /= denom;
 #ifdef LBANN_ENABLE_SOFTMAX_THRESHOLD
-      y = cuda::max(y, cuda::sqrt(cuda::min<TensorDataType>()));
+      y = gpu_lib::max(y, gpu_lib::sqrt(gpu_lib::min<TensorDataType>()));
 #endif // LBANN_ENABLE_SOFTMAX_THRESHOLD
     }
   }
@@ -219,9 +221,9 @@ __global__ void bp_dot_product_kernel(
 
     // Compute dot product contribution for each block
     const TensorDataType block_dot_product
-      = cuda::block_reduce<bsize,1,1>(thread_dot_product);
+      = gpu_lib::block_reduce<bsize,1,1>(thread_dot_product);
     if (tid == 0) {
-      cuda::atomic_add(&dot_products[col], block_dot_product);
+      gpu_lib::atomic_add(&dot_products[col], block_dot_product);
     }
 
   }
@@ -288,41 +290,35 @@ void fp_compute_impl(softmax_layer<TensorDataType, data_layout::DATA_PARALLEL, E
   }
 #endif // LBANN_HAS_DISTCONV
 
-  cudnnSoftmaxMode_t cudnn_softmax_mode;
-  switch(l.m_mode) {
-    case softmax_mode::INSTANCE:
-      cudnn_softmax_mode = CUDNN_SOFTMAX_MODE_INSTANCE;
-      break;
-    case softmax_mode::CHANNEL:
-      cudnn_softmax_mode = CUDNN_SOFTMAX_MODE_CHANNEL;
-      break;
-    default:
-      LBANN_ERROR("Unsupported softmax mode");
-  }
-
-  const cudnn::ScalingParamType<TensorDataType> zero = 0.;
-  const cudnn::ScalingParamType<TensorDataType> one = 1.;
-  const auto& local_input = dynamic_cast<const El::Matrix<TensorDataType, El::Device::GPU>&>(l.get_local_prev_activations());
-  auto& local_output = dynamic_cast<El::Matrix<TensorDataType, El::Device::GPU>&>(l.get_local_activations());
-  if (!local_input.IsEmpty()) {
-    CHECK_CUDNN(cudnnSoftmaxForward(cudnn::get_handle(),
-                                    CUDNN_SOFTMAX_ACCURATE,
-                                    cudnn_softmax_mode,
-                                    &one,
-                                    l.m_tensors_cudnn_desc.get_prev_activations(),
-                                    local_input.LockedBuffer(),
-                                    &zero,
-                                    l.m_tensors_cudnn_desc.get_activations(),
-                                    local_output.Buffer()));
-#ifdef LBANN_ENABLE_SOFTMAX_THRESHOLD
-    cuda::apply_entrywise_unary_operator<threshold_op>(local_output,
+  const auto& local_input =
+    dynamic_cast<const El::Matrix<TensorDataType, El::Device::GPU>&>(
+      l.get_local_prev_activations());
+  auto& local_output =
+    dynamic_cast<El::Matrix<TensorDataType, El::Device::GPU>&>(
+      l.get_local_activations());
+  if (!local_input.IsEmpty())
+  {
+    dnn_primitive::softmax_forward(
+      softmax_algo::ACCURATE,
+      l.m_mode,
+      TensorDataType(1.f),
+      l.m_tensors_cudnn_desc.get_prev_activations(),
+      local_input.LockedBuffer(),
+      TensorDataType(0.f),
+      l.m_tensors_cudnn_desc.get_activations(),
+      local_output.Buffer());
+#ifdef LBANN_ENABLE_SOFTMAX_THRESHOLD_FIXME
+    // TOM_FIXME
+    gpu_lib::apply_entrywise_unary_operator<threshold_op>(local_output,
                                                        local_output);
 #endif // LBANN_ENABLE_SOFTMAX_THRESHOLD
   }
 }
 
 template <typename TensorDataType>
-void bp_compute_impl(softmax_layer<TensorDataType, data_layout::DATA_PARALLEL, El::Device::GPU>& l) {
+void bp_compute_impl(
+  softmax_layer<TensorDataType, data_layout::DATA_PARALLEL, El::Device::GPU>& l)
+{
 #ifdef LBANN_HAS_DISTCONV
   if (l.distconv_enabled()) {
     bp_compute_distconv(l.get_distconv_adapter());
@@ -330,35 +326,28 @@ void bp_compute_impl(softmax_layer<TensorDataType, data_layout::DATA_PARALLEL, E
   }
 #endif // LBANN_HAS_DISTCONV
 
-  cudnnSoftmaxMode_t cudnn_softmax_mode;
-  switch(l.m_mode) {
-    case softmax_mode::INSTANCE:
-      cudnn_softmax_mode = CUDNN_SOFTMAX_MODE_INSTANCE;
-      break;
-    case softmax_mode::CHANNEL:
-      cudnn_softmax_mode = CUDNN_SOFTMAX_MODE_CHANNEL;
-      break;
-    default:
-      LBANN_ERROR("Unsupported softmax mode");
-  }
-
-  const cudnn::ScalingParamType<TensorDataType> zero = 0.;
-  const cudnn::ScalingParamType<TensorDataType> one = 1.;
-  const auto& local_output = dynamic_cast<const El::Matrix<TensorDataType, El::Device::GPU>&>(l.get_local_activations());
-  const auto& local_gradient_wrt_output = dynamic_cast<const El::Matrix<TensorDataType, El::Device::GPU>&>(l.get_local_prev_error_signals());
-  auto& local_gradient_wrt_input = dynamic_cast<El::Matrix<TensorDataType, El::Device::GPU>&>(l.get_local_error_signals());
-  if (!local_output.IsEmpty()) {
-    CHECK_CUDNN(cudnnSoftmaxBackward(cudnn::get_handle(),
-                                     CUDNN_SOFTMAX_ACCURATE,
-                                     cudnn_softmax_mode,
-                                     &one,
-                                     l.m_tensors_cudnn_desc.get_activations(),
-                                     local_output.LockedBuffer(),
-                                     l.m_tensors_cudnn_desc.get_prev_error_signals(),
-                                     local_gradient_wrt_output.LockedBuffer(),
-                                     &zero,
-                                     l.m_tensors_cudnn_desc.get_error_signals(),
-                                     local_gradient_wrt_input.Buffer()));
+  const auto& local_output =
+    dynamic_cast<const El::Matrix<TensorDataType, El::Device::GPU>&>(
+      l.get_local_activations());
+  const auto& local_gradient_wrt_output =
+    dynamic_cast<const El::Matrix<TensorDataType, El::Device::GPU>&>(
+      l.get_local_prev_error_signals());
+  auto& local_gradient_wrt_input =
+    dynamic_cast<El::Matrix<TensorDataType, El::Device::GPU>&>(
+      l.get_local_error_signals());
+  if (!local_output.IsEmpty())
+  {
+    dnn_primitive::softmax_backward(
+      softmax_algo::ACCURATE,
+      l.m_mode,
+      TensorDataType(1.f),
+      l.m_tensors_cudnn_desc.get_activations(),
+      local_output.LockedBuffer(),
+      l.m_tensors_cudnn_desc.get_prev_error_signals(),
+      local_gradient_wrt_output.LockedBuffer(),
+      TensorDataType(0.f),
+      l.m_tensors_cudnn_desc.get_error_signals(),
+      local_gradient_wrt_input.Buffer());
   }
 }
 
@@ -377,12 +366,12 @@ void fp_compute_impl(softmax_layer<TensorDataType, data_layout::MODEL_PARALLEL, 
   const size_t local_width = local_input.Width();
 
   // GPU objects
-  auto&& stream = El::GPUManager::Stream();
-  auto&& event = El::GPUManager::Event();
-  El::SyncInfo<El::Device::GPU> sync_info{stream, event};
+  auto sync_info = El::SyncInfoFromMatrix(local_workspace);
+  auto stream = sync_info.Stream();
+  auto event = sync_info.Stream();
 
   // Find max value in each column
-  cuda::thrust::vector<TensorDataType> max_vals;
+  gpu_lib::thrust::vector<TensorDataType> max_vals;
   if (local_output.IsEmpty()) {
     max_vals.resize(local_width,
                     -std::numeric_limits<TensorDataType>::infinity());
@@ -394,16 +383,20 @@ void fp_compute_impl(softmax_layer<TensorDataType, data_layout::MODEL_PARALLEL, 
     grid_dims.x = (local_height + block_size - 1) / block_size;
     grid_dims.y = local_width;
     max_vals.resize(grid_dims.x * local_width);
-    reduce_max_kernel<block_size><<<grid_dims, block_dims, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      reduce_max_kernel<block_size, TensorDataType>,
+      grid_dims, block_dims, 0, sync_info,
       local_height, local_width,
       local_input.LockedBuffer(), local_input.LDim(),
       max_vals.data().get());
     while (grid_dims.x > 1) {
       const size_t prev_height = grid_dims.x;
       grid_dims.x = (prev_height + block_size - 1) / block_size;
-      cuda::thrust::vector<TensorDataType> prev_vals(std::move(max_vals));
+      gpu_lib::thrust::vector<TensorDataType> prev_vals(std::move(max_vals));
       max_vals.resize(grid_dims.x * local_width);
-      reduce_max_kernel<block_size><<<grid_dims, block_dims, 0, stream>>>(
+      hydrogen::gpu::LaunchKernel(
+        reduce_max_kernel<block_size, TensorDataType>,
+        grid_dims, block_dims, 0, sync_info,
         prev_height, local_width,
         prev_vals.data().get(), prev_height,
         max_vals.data().get());
@@ -421,7 +414,9 @@ void fp_compute_impl(softmax_layer<TensorDataType, data_layout::MODEL_PARALLEL, 
     block_dims.x = block_size;
     grid_dims.x = (local_height + block_size - 1) / block_size;
     grid_dims.y = local_width;
-    fp_exp_kernel<block_size><<<grid_dims, block_dims, 0, stream>>>(
+hydrogen::gpu::LaunchKernel(
+      fp_exp_kernel<block_size, TensorDataType>,
+  grid_dims, block_dims, 0, sync_info,
       local_height, local_width,
       local_input.LockedBuffer(), local_input.LDim(),
       local_output.Buffer(), local_output.LDim(),
@@ -438,7 +433,9 @@ void fp_compute_impl(softmax_layer<TensorDataType, data_layout::MODEL_PARALLEL, 
     block_dims.x = block_size;
     grid_dims.x = (local_height + block_size - 1) / block_size;
     grid_dims.y = local_width;
-    fp_output_kernel<<<grid_dims, block_dims, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      fp_output_kernel<TensorDataType>,
+      grid_dims, block_dims, 0, sync_info,
       local_height, local_width,
       local_output.Buffer(), local_output.LDim(),
       local_workspace.LockedBuffer());
@@ -462,9 +459,9 @@ void bp_compute_impl(softmax_layer<TensorDataType, data_layout::MODEL_PARALLEL, 
   const auto& local_width = local_output.Width();
 
   // GPU objects
-  auto&& stream = El::GPUManager::Stream();
-  auto&& event = El::GPUManager::Event();
-  El::SyncInfo<El::Device::GPU> sync_info{stream, event};
+  auto sync_info = El::SyncInfoFromMatrix(local_workspace);
+  auto stream = sync_info.Stream();
+  auto event = sync_info.Event();
 
   // Compute dot(y,dy)
   El::Zero(local_workspace);
@@ -474,14 +471,15 @@ void bp_compute_impl(softmax_layer<TensorDataType, data_layout::MODEL_PARALLEL, 
     block_dims.x = block_size;
     grid_dims.x = (local_height + block_size - 1) / block_size;
     grid_dims.y = local_width;
-    bp_dot_product_kernel<block_size>
-      <<<grid_dims, block_dims, 0, stream>>>(
-        local_height, local_width,
-        local_output.LockedBuffer(),
-        local_output.LDim(),
-        local_gradient_wrt_output.LockedBuffer(),
-        local_gradient_wrt_output.LDim(),
-        local_workspace.Buffer());
+    hydrogen::gpu::LaunchKernel(
+      bp_dot_product_kernel<block_size, TensorDataType>,
+      grid_dims, block_dims, 0, sync_info,
+      local_height, local_width,
+      local_output.LockedBuffer(),
+      local_output.LDim(),
+      local_gradient_wrt_output.LockedBuffer(),
+      local_gradient_wrt_output.LDim(),
+      local_workspace.Buffer());
   }
   El::AllReduce(*l.m_workspace, l.m_workspace->RedundantComm());
 
@@ -492,7 +490,9 @@ void bp_compute_impl(softmax_layer<TensorDataType, data_layout::MODEL_PARALLEL, 
     block_dims.x = block_size;
     grid_dims.x = (local_height + block_size - 1) / block_size;
     grid_dims.y = local_width;
-    bp_kernel<block_size><<<grid_dims, block_dims, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      bp_kernel<block_size, TensorDataType>,
+      grid_dims, block_dims, 0, sync_info,
       local_height, local_width,
       local_output.LockedBuffer(),
       local_output.LDim(),

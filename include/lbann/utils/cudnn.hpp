@@ -87,6 +87,7 @@ using DataType_t = cudnnDataType_t;
 using Handle_t = cudnnHandle_t;
 
 using ActivationDescriptor_t = cudnnActivationDescriptor_t;
+using ActivationMode_t = cudnnActivationMode_t;
 using ConvolutionDescriptor_t = cudnnConvolutionDescriptor_t;
 using FilterDescriptor_t = cudnnFilterDescriptor_t;
 using TensorDescriptor_t = cudnnTensorDescriptor_t;

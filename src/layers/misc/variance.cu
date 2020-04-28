@@ -26,6 +26,7 @@
 
 #define LBANN_VARIANCE_LAYER_INSTANTIATE
 #include "lbann/layers/misc/variance.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -68,8 +69,8 @@ __global__ void variance_contribution_kernel(El::Int height,
       }
     }
     if (tid == 0) {
-      cuda::atomic_add(&contribution[col],
-                       scale * shared_contribution[0]);
+      gpu_lib::atomic_add(&contribution[col],
+                          scale * shared_contribution[0]);
     }
 
   }

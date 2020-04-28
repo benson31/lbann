@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   normalize.cpp
   repack_HWC_to_CHW_layout.cpp
   sample_normalize.cpp
@@ -9,6 +9,3 @@ set_source_path(THIS_DIR_SOURCES
   )
 
 add_subdirectory(vision)
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)

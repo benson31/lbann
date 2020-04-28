@@ -1,31 +1,28 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
+  bernoulli.hpp
+  categorical_random.hpp
   concatenate.hpp
-  pooling.hpp
-  reshape.hpp
-  slice.hpp
-  split.hpp
-  sum.hpp
-  weighted_sum.hpp
-  transform.hpp
-  unpooling.hpp
   constant.hpp
+  crop.hpp
+  discrete_random.hpp
   dummy.hpp
-  hadamard.hpp
-  reduction.hpp
   evaluation.hpp
   gaussian.hpp
-  bernoulli.hpp
-  uniform.hpp
-  crop.hpp
-  categorical_random.hpp
-  discrete_random.hpp
-  stop_gradient.hpp
+  hadamard.hpp
   in_top_k.hpp
+  pooling.hpp
+  reduction.hpp
+  reshape.hpp
+  slice.hpp
   sort.hpp
-  weights.hpp
+  split.hpp
+  stop_gradient.hpp
+  sum.hpp
   tessellate.hpp
+  transform.hpp
+  uniform.hpp
+  unpooling.hpp
+  weighted_sum.hpp
+  weights.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

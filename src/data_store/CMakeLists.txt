@@ -1,6 +1,4 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   data_store_conduit.cpp
 )
-
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)

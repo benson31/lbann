@@ -99,6 +99,14 @@ __global__ void nesterov_kernel(size_t height,
 template <typename TensorDataType>
 void sgd<TensorDataType>::momentum_step_gpu(AbsDistMatrixType& values,
                                             const AbsDistMatrixType& gradient) {
+  using GPUMatType = El::Matrix<TensorDataType, El::Device::GPU>;
+  auto get_sync_info = [](AbsDistMatrixType const& m) {
+    return El::SyncInfoFromMatrix(
+      dynamic_cast<GPUMatType const&>(m.LockedMatrix()));
+  };
+
+  auto multisync = El::MakeMultiSync(get_sync_info(values),
+                                     get_sync_info(gradient));
 
   // Get matrix dimensions
   const size_t local_height = values.LocalHeight();
@@ -109,9 +117,10 @@ void sgd<TensorDataType>::momentum_step_gpu(AbsDistMatrixType& values,
   // Launch CUDA kernels for momentum SGD or NAG
   constexpr size_t block_size = 256;
   const size_t grid_size = (local_size + block_size - 1) / block_size;
-  auto&& stream = El::GPUManager::Stream();
   if (m_nesterov) {
-    nesterov_kernel<TensorDataType><<<grid_size, block_size, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      nesterov_kernel<TensorDataType>,
+      grid_size, block_size, 0, multisync,
       local_height, local_width,
       this->get_learning_rate(), m_momentum,
       values.Buffer(), values.LDim(),
@@ -120,11 +129,15 @@ void sgd<TensorDataType>::momentum_step_gpu(AbsDistMatrixType& values,
   } else {
     if (values.Contiguous() && gradient.Contiguous()
         && m_velocity->Contiguous()) {
-      momentum_contiguous_kernel<TensorDataType><<<grid_size, block_size, 0, stream>>>(
+      hydrogen::gpu::LaunchKernel(
+        momentum_contiguous_kernel<TensorDataType>,
+        grid_size, block_size, 0, multisync,
         local_size, this->get_learning_rate(), m_momentum,
         values.Buffer(), gradient.LockedBuffer(), m_velocity->Buffer());
     } else {
-      momentum_noncontiguous_kernel<TensorDataType><<<grid_size, block_size, 0, stream>>>(
+      hydrogen::gpu::LaunchKernel(
+        momentum_noncontiguous_kernel<TensorDataType>,
+        grid_size, block_size, 0, multisync,
         local_height, local_width,
         this->get_learning_rate(), m_momentum,
         values.Buffer(), values.LDim(),

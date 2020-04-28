@@ -270,6 +270,11 @@ if (LBANN_HAS_GPU AND LBANN_HAS_HALF)
 endif ()
 
 if (LBANN_HAS_ROCM)
+  list(APPEND CMAKE_MODULE_PATH /opt/rocm/hip/cmake)
+  find_package(HIP MODULE REQUIRED)
+  if (HIP_FOUND)
+    message("\n\n\nFOUND HIP!\n\n\n")
+  endif ()
   find_package(MIOpen CONFIG REQUIRED)
   set(LBANN_HAS_MIOPEN TRUE)
 endif (LBANN_HAS_ROCM)
@@ -558,9 +563,29 @@ add_subdirectory(docs)
 # Build LBANN
 ################################################################
 
+add_library(lbann_cxx)
+if (LBANN_HAS_GPU)
+  # Will never be built. Don't worry about it. This is a hack to get
+  # around the disaster that is hip_add_library.
+  add_library(lbann_gpu_srcs INTERFACE)
+endif ()
+
 # Add LBANN source files
 add_subdirectory(include)
 add_subdirectory(src)
+
+# More hacking around the hip_add_library disaster.
+if (LBANN_HAS_GPU)
+  get_target_property(_LBANN_GPU_SRCS lbann_gpu_srcs INTERFACE_SOURCES)
+  set_target_properties(lbann_gpu_srcs PROPERTIES INTERFACE_SOURCES "")
+
+  message("\n\n\n${_LBANN_GPU_SRCS}\n\n\n")
+  if (LBANN_HAS_ROCM)
+    hip_add_library(lbann_gpu STATIC ${_LBANN_GPU_SRCS})
+  elseif (LBANN_HAS_CUDA)
+    add_library(lbann_gpu ${_LBANN_GPU_SRCS})
+  endif ()
+endif (LBANN_HAS_GPU)
 
 # Write the configure file
 configure_file(
@@ -568,80 +593,85 @@ configure_file(
   "${CMAKE_BINARY_DIR}/lbann_config.hpp"
   @ONLY)
 
-# Create the LBANN library
-if (FALSE)
-  hipify_source_files(LBANN_HIP_SOURCES ${LBANN_SOURCES} ${LBANN_CUDA_SOURCES})
-  hipify_header_files(LBANN_HIP_HEADERS ${LBANN_HEADERS})
-
-  hip_add_library(lbann "${LBANN_HIP_SOURCES}" "${LBANN_HIP_HEADERS}")
-else ()
-  add_library(lbann ${LBANN_SOURCES} ${LBANN_HEADERS} ${LBANN_CUDA_SOURCES})
-  target_include_directories(lbann PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)
-endif ()
-
-target_include_directories(lbann PUBLIC
+target_include_directories(lbann_cxx PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}>)
 
-# Use the IMPORTED targets when possible.
-target_link_libraries(lbann PUBLIC LbannProto)
-target_link_libraries(lbann PUBLIC Threads::Threads)
-target_link_libraries(lbann PUBLIC clara::clara)
-target_link_libraries(lbann PUBLIC cereal)
-target_link_libraries(lbann PUBLIC OpenMP::OpenMP_CXX)
-target_link_libraries(lbann PUBLIC MPI::MPI_CXX)
-target_link_libraries(lbann PUBLIC protobuf::libprotobuf)
-target_link_libraries(lbann PUBLIC ${HYDROGEN_LIBRARIES})
-target_link_libraries(lbann PUBLIC ${OpenCV_LIBRARIES})
-target_link_libraries(lbann PUBLIC ${CONDUIT_LIBRARIES})
+if (LBANN_HAS_GPU)
+  target_include_directories(lbann_gpu PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}>)
+endif ()
 
-target_link_libraries(lbann PUBLIC
+# Use the IMPORTED targets when possible.
+target_link_libraries(lbann_cxx PUBLIC
+  # Internal
+  LbannProto
+  $<TARGET_NAME_IF_EXISTS:TBinf>
+  $<TARGET_NAME_IF_EXISTS:LBANN_CXX_FLAGS_werror>
+
+  # Hydrogen
+  ${HYDROGEN_LIBRARIES}
+
+  # DiHydrogen
   $<TARGET_NAME_IF_EXISTS:H2::H2Meta>
   $<TARGET_NAME_IF_EXISTS:H2::H2Patterns>
+  $<TARGET_NAME_IF_EXISTS:H2::H2DistConv>
+
+  # Third-party
+  cereal
+  clara::clara
+  ${CONDUIT_LIBRARIES}
+  MPI::MPI_CXX
+  protobuf::libprotobuf
+  ${OpenCV_LIBRARIES}
+  OpenMP::OpenMP_CXX
+  Threads::Threads
+  $<TARGET_NAME_IF_EXISTS:CNPY::CNPY>
+  $<TARGET_NAME_IF_EXISTS:HWLOC::hwloc>
+  $<TARGET_NAME_IF_EXISTS:Python::Python>
 
   # ROCm stuff
   $<TARGET_NAME_IF_EXISTS:MIOpen>
   )
 
-if (LBANN_WITH_DISTCONV)
-  target_link_libraries(lbann PUBLIC H2::H2DistConv)
-endif ()
+if (LBANN_HAS_GPU)
+  target_link_libraries(lbann_gpu PUBLIC
+    LbannProto
+    TBinf
+    
+    ${HYDROGEN_LIBRARIES}
 
-if (LBANN_HAS_TBINF)
-  target_link_libraries(lbann PUBLIC TBinf)
-endif ()
-
-if (LBANN_HAS_CNPY)
-  target_link_libraries(lbann PUBLIC CNPY::CNPY)
-endif ()
-
-if (LBANN_TOPO_AWARE)
-  target_link_libraries(lbann PUBLIC HWLOC::hwloc)
+    # Third-party # FIXME: These shouldn't be here!
+    protobuf::libprotobuf
+    $<TARGET_NAME_IF_EXISTS:cereal>
+    )
 endif ()
 
 if (LBANN_HAS_ALUMINUM)
-  target_link_libraries(lbann PUBLIC ${Aluminum_LIBRARIES})
+  target_link_libraries(lbann_cxx PUBLIC ${Aluminum_LIBRARIES})
 endif ()
 
 if (LBANN_HAS_VTUNE)
-  target_link_libraries(lbann PUBLIC ${VTUNE_STATIC_LIB})
-endif ()
-
-if (LBANN_HAS_PYTHON)
-  target_link_libraries(lbann PUBLIC Python::Python)
+  target_link_libraries(lbann_cxx PUBLIC ${VTUNE_STATIC_LIB})
 endif ()
 
 if (LBANN_HAS_NVSHMEM)
-  set_property(TARGET lbann PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-  target_link_libraries(lbann PUBLIC NVSHMEM::NVSHMEM)
+  set_property(TARGET lbann_cxx PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+  set_property(TARGET lbann_gpu PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+  target_link_libraries(lbann_cxx PUBLIC NVSHMEM::NVSHMEM)
+  target_link_libraries(lbann_gpu PUBLIC NVSHMEM::NVSHMEM)
 endif ()
 
-if (TARGET LBANN_CXX_FLAGS_werror)
-  target_link_libraries(lbann PUBLIC LBANN_CXX_FLAGS_werror)
-endif ()
+target_link_libraries(lbann_cxx PUBLIC ${DL_LIBRARY})
 
-target_link_libraries(lbann PUBLIC ${DL_LIBRARY})
+add_library(lbann INTERFACE)
+target_link_libraries(lbann INTERFACE
+  lbann_cxx
+  $<TARGET_NAME_IF_EXISTS:lbann_gpu>
+  )
 
 # Fix the -g issue with Clang on OSX
 if (APPLE)
@@ -650,7 +680,7 @@ if (APPLE)
   string(REPLACE  "-g" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
 
   # Get all the sources and add "-g" to all of them.
-  get_target_property(_LBANN_SRCS lbann SOURCES)
+  get_target_property(_LBANN_SRCS lbann_cxx SOURCES)
   set_source_files_properties(${_LBANN_SRCS}
     PROPERTIES COMPILE_OPTIONS "-g")
 
@@ -725,8 +755,19 @@ configure_package_config_file(cmake/configure_files/LBANNConfig.cmake.in
   PATH_VARS INCLUDE_INSTALL_DIRS LIB_INSTALL_DIR)
 
 # Install library
+if (LBANN_HAS_GPU)
+  install(
+  TARGETS lbann_gpu
+  EXPORT LBANNTargets
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  )
+endif ()
+
 install(
-  TARGETS lbann
+  TARGETS lbann_cxx lbann
   EXPORT LBANNTargets
   RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"

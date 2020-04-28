@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   bernoulli.cpp
   categorical_random.cpp
   concatenate.cpp
@@ -28,9 +28,9 @@ set_source_path(THIS_DIR_SOURCES
   weights.cpp
   )
 
-if (LBANN_HAS_CUDA)
-  # Add the CUDA source files for this directory
-  set_source_path(THIS_DIR_CU_SOURCES
+if (LBANN_HAS_GPU)
+  # Add the GPU source files for this directory
+  target_sources(lbann_gpu_srcs INTERFACE
     concatenate.cu
     crop.cu
     in_top_k.cu
@@ -41,7 +41,3 @@ if (LBANN_HAS_CUDA)
     sum.cu
     )
 endif ()
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)
-set(CUDA_SOURCES "${CUDA_SOURCES}" "${THIS_DIR_CU_SOURCES}" PARENT_SCOPE)

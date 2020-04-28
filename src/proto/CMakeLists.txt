@@ -70,7 +70,7 @@ if (LBANN_HAS_PROTOBUF)
 endif (LBANN_HAS_PROTOBUF)
 
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   init_image_data_readers.cpp
   proto_common.cpp
   helpers.cpp
@@ -78,6 +78,3 @@ set_source_path(THIS_DIR_SOURCES
 
 # Add the subdirectories
 add_subdirectory(factories)
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)

@@ -26,13 +26,13 @@
 
 #define LBANN_SLICE_LAYER_INSTANTIATE
 #include "lbann/layers/transform/slice.hpp"
-#include "lbann/utils/cuda.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
 namespace {
 
-using dim4 = cuda::array<size_t, 4>;
+using dim4 = gpu_lib::array<size_t, 4>;
 
 /**
  *  Block dimensions: bsize x 1 x 1
@@ -279,7 +279,7 @@ void fp_compute_impl(
 
   // Copy tensor data to GPU
   auto&& stream = El::GPUManager::Stream();
-  cuda::thrust::vector<unsigned char> device_workspace(l.m_workspace.size());
+  gpu_lib::thrust::vector<unsigned char> device_workspace(l.m_workspace.size());
   unsigned char* device_workspace_ptr = device_workspace.data().get();
   cudaMemcpyAsync(device_workspace_ptr,
                   l.m_workspace.data(),
@@ -417,7 +417,7 @@ void bp_compute_impl(
 
   // Copy tensor data to GPU
   auto&& stream = El::GPUManager::Stream();
-  cuda::thrust::vector<unsigned char> device_workspace(l.m_workspace.size());
+  gpu_lib::thrust::vector<unsigned char> device_workspace(l.m_workspace.size());
   unsigned char* device_workspace_ptr = device_workspace.data().get();
   cudaMemcpyAsync(device_workspace_ptr,
                   l.m_workspace.data(),

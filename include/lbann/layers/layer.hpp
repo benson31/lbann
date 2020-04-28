@@ -33,9 +33,7 @@
 #include "lbann/utils/summary.hpp"
 #include "lbann/optimizers/optimizer.hpp"
 #include "lbann/utils/exception.hpp"
-#include "lbann/utils/timer.hpp"
 #include "lbann/utils/description.hpp"
-#include "lbann/io/persist.hpp"
 #include "lbann/utils/memory.hpp"
 #include "lbann/utils/typename.hpp"
 #include "lbann/utils/distconv.hpp"
@@ -82,7 +80,10 @@ class Layer;
 namespace lbann {
 
 // Forward declarations
+class lbann_comm;
+class lbann_summary;
 class model;
+class persist;
 class weights;
 namespace callback {
 class sync_layers;

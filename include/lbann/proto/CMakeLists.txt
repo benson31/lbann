@@ -1,10 +1,7 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   init_image_data_readers.hpp
   proto_common.hpp
   helpers.hpp
   datatype_helpers.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

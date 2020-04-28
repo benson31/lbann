@@ -1,11 +1,7 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   thread_pool.hpp
-  thread_safe_queues.hpp
-  type_erased_function.hpp
-  memory.hpp
+  thread_safe_queue.hpp
   thread_utils.hpp
+  type_erased_function.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

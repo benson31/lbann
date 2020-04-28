@@ -1,20 +1,16 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   unary.cpp
   binary.cpp
   clamp.cpp
   matmul.cpp
   )
 
-if (LBANN_HAS_CUDA)
-  # Add the CUDA source files for this directory
-  set_source_path(THIS_DIR_CU_SOURCES
+if (LBANN_HAS_GPU)
+  # Add the GPU source files for this directory
+  target_sources(lbann_gpu_srcs INTERFACE
     unary.cu
     binary.cu
     clamp.cu
     )
 endif ()
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)
-set(CUDA_SOURCES "${CUDA_SOURCES}" "${THIS_DIR_CU_SOURCES}" PARENT_SCOPE)

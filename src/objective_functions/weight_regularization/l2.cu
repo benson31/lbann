@@ -26,9 +26,9 @@
 
 #include "lbann/objective_functions/weight_regularization/l2.hpp"
 #include "lbann/models/model.hpp"
-#ifdef LBANN_HAS_GPU
+
 #include "lbann/utils/cublas.hpp"
-#endif // LBANN_HAS_GPU
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -67,7 +67,7 @@ __global__ void accumulate_contribution_kernel(El::Int height,
     }
   }
   if (tid == 0) {
-    cuda::atomic_add(contribution, shared_contribution[0]);
+    gpu_lib::atomic_add(contribution, shared_contribution[0]);
   }
 
 }

@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   normalize.hpp
   repack_HWC_to_CHW_layout.hpp
   sample_normalize.hpp
@@ -10,6 +10,3 @@ set_source_path(THIS_DIR_HEADERS
   )
 
 add_subdirectory(vision)
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

@@ -28,14 +28,14 @@
 
 #include "lbann/data_readers/data_reader.hpp"
 #include "lbann/data_store/data_store_conduit.hpp"
-#include "lbann/utils/omp_pragma.hpp"
-#include "lbann/trainers/trainer.hpp"
-
-#include <future>
-#include "lbann/io/persist.hpp"
 #include "lbann/execution_contexts/sgd_execution_context.hpp"
+#include "lbann/io/persist.hpp"
+#include "lbann/models/model.hpp"
+#include "lbann/trainers/trainer.hpp"
+#include "lbann/utils/timer.hpp"
 #include <cereal/archives/binary.hpp>
 #include <cereal/archives/xml.hpp>
+#include <future>
 
 namespace lbann {
 

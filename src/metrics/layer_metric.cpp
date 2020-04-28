@@ -25,6 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/metrics/layer_metric.hpp"
+#include "lbann/utils/timer.hpp"
 
 namespace lbann {
 

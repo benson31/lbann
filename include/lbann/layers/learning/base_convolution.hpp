@@ -136,19 +136,19 @@ protected:
   cudnnMathType_t m_convolution_math_type =
     cudnn::get_default_convolution_math_type();
   /** Convolution kernel cuDNN descriptor. */
-  cudnnFilterDescriptor_t m_kernel_cudnn_desc = nullptr;
+  dnn_primitive::FilterDescriptor_t m_kernel_cudnn_desc = nullptr;
   /** Convolution cuDNN descriptor. */
-  cudnnConvolutionDescriptor_t m_convolution_cudnn_desc = nullptr;
+  dnn_primitive::ConvolutionDescriptor_t m_convolution_cudnn_desc = nullptr;
   /** Bias tensor cuDNN descriptor. */
-  cudnnTensorDescriptor_t m_bias_cudnn_desc = nullptr;
+  dnn_primitive::TensorDescriptor_t m_bias_cudnn_desc = nullptr;
   /** Tensor cuDNN descriptors. */
   cudnn::data_parallel_layer_tensor_manager<TensorDataType> m_tensors_cudnn_desc;
   /** Forward algorithm cache (mini-batch size -> algo). */
-  std::unordered_map<int, cudnnConvolutionFwdAlgo_t> m_fwd_cudnn_algos;
+  std::unordered_map<int, dnn_primitive::ConvolutionFwdAlgo_t> m_fwd_cudnn_algos;
   /** Backward data algorithm cache (mini-batch size -> algo). */
-  std::unordered_map<int, cudnnConvolutionBwdDataAlgo_t> m_bwd_data_cudnn_algos;
+  std::unordered_map<int, dnn_primitive::ConvolutionBwdDataAlgo_t> m_bwd_data_cudnn_algos;
   /** Backward filter algorithm cache (mini-batch size -> algo). */
-  std::unordered_map<int, cudnnConvolutionBwdFilterAlgo_t> m_bwd_filter_cudnn_algos;
+  std::unordered_map<int, dnn_primitive::ConvolutionBwdFilterAlgo_t> m_bwd_filter_cudnn_algos;
 
 #endif // LBANN_HAS_CUDNN
 

@@ -42,11 +42,12 @@
 namespace lbann {
 
 // Forward declarations
-namespace cudnn {
+namespace dnn_primitive
+{
 template <typename U>
-class data_parallel_layer_tensor_manager;
+class DataParallelLayerTensorManager;
 template <typename U>
-class entrywise_layer_tensor_manager;
+class EntrywiseLayerTensorManager;
 }
 
 using supported_layer_data_type = h2::meta::TL<
@@ -403,12 +404,12 @@ private:
   void setup_distconv_adapter() override;
 #endif // LBANN_HAS_DISTCONV
 
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
   template <typename U>
-  friend class cudnn::data_parallel_layer_tensor_manager;
+  friend class dnn_primitive::DataParallelLayerTensorManager;
   template <typename U>
-  friend class cudnn::entrywise_layer_tensor_manager;
-#endif // LBANN_HAS_CUDNN
+  friend class dnn_primitive::EntrywiseLayerTensorManager;
+#endif // defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
 };
 
 #ifndef LBANN_DATA_TYPE_LAYER_INSTANTIATE

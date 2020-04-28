@@ -101,7 +101,17 @@ void local_fp(TensorDataType min,
 
   // Launch CUDA kernel
   if (grid_dim > 0) {
-    fp_kernel<<<grid_dim, block_dim, 0, El::GPUManager::Stream()>>>(
+    using GPUMatType = El::Matrix<TensorDataType, El::Device::GPU>;
+    auto get_sync_info = [](El::AbstractMatrix<TensorDataType> const& m) {
+      return El::SyncInfoFromMatrix(dynamic_cast<GPUMatType const&>(m));
+    };
+
+    auto multisync = El::MakeMultiSync(get_sync_info(output),
+                                       get_sync_info(input));
+
+    hydrogen::gpu::LaunchKernel(
+      fp_kernel<TensorDataType>,
+      grid_dim, block_dim, 0, multisync,
       min, max, height, width,
       input.LockedBuffer(), input.LDim(),
       output.Buffer(), output.LDim());
@@ -131,7 +141,18 @@ void local_bp(TensorDataType min,
 
   // Launch CUDA kernel
   if (grid_dim > 0) {
-    bp_kernel<<<grid_dim, block_dim, 0, El::GPUManager::Stream()>>>(
+    using GPUMatType = El::Matrix<TensorDataType, El::Device::GPU>;
+    auto get_sync_info = [](El::AbstractMatrix<TensorDataType> const& m) {
+      return El::SyncInfoFromMatrix(dynamic_cast<GPUMatType const&>(m));
+    };
+
+    auto multisync = El::MakeMultiSync(get_sync_info(gradient_wrt_input),
+                                       get_sync_info(gradient_wrt_output),
+                                       get_sync_info(input));
+
+    hydrogen::gpu::LaunchKernel(
+      bp_kernel<TensorDataType>,
+      grid_dim, block_dim, 0, multisync,
       min, max, height, width,
       input.LockedBuffer(), input.LDim(),
       gradient_wrt_output.LockedBuffer(), gradient_wrt_output.LDim(),

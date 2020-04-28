@@ -71,17 +71,22 @@ void one_hot_layer<TensorDataType, Layout, Device>::fp_compute() {
   // Populate one-hot vectors
   El::Zero(local_output);
   if (!local_output.IsEmpty()) {
+    auto multisync = El::MakeMultiSync(El::SyncInfoFromMatrix(local_output),
+                                       El::SyncInfoFromMatrix(local_input));
+
     const size_t local_height = local_output.Height();
     const size_t local_width = local_output.Width();
     constexpr size_t block_size = 64;
     const size_t grid_size = (local_width + block_size - 1) / block_size;
-    fp_kernel<<<grid_size, block_size, 0, El::GPUManager::Stream()>>>(
-        local_height,
-        local_width,
-        local_input.LockedBuffer(),
-        local_input.LDim(),
-        local_output.Buffer(),
-        local_output.LDim());
+    hydrogen::gpu::LaunchKernel(
+      fp_kernel<TensorDataType>,
+      grid_size, block_size, 0, multisync,
+      local_height,
+      local_width,
+      local_input.LockedBuffer(),
+      local_input.LDim(),
+      local_output.Buffer(),
+      local_output.LDim());
   }
 
 }

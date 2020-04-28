@@ -26,6 +26,7 @@
 
 #define LBANN_L1_NORM_LAYER_INSTANTIATE
 #include "lbann/layers/loss/l1_norm.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -51,7 +52,7 @@ __global__ void fp_kernel(El::Int local_height,
     TensorDataType private_contribution = 0;
     for (El::Int row = gidx; row < local_height; row += nthreadsx) {
       const auto& x = input[row + col * input_ldim];
-      private_contribution += cuda::abs(x);
+      private_contribution += gpu_lib::abs(x);
     }
 
     // Shared memory reduction to get contribution for each block
@@ -65,7 +66,7 @@ __global__ void fp_kernel(El::Int local_height,
       }
     }
     if (tid == 0) {
-      cuda::atomic_add(&contribution[col], shared_contribution[0]);
+      gpu_lib::atomic_add(&contribution[col], shared_contribution[0]);
     }
 
   }

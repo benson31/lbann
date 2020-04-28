@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   data_reader.cpp
   data_reader_cifar10.cpp
   data_reader_csv.cpp
@@ -20,6 +20,3 @@ set_source_path(THIS_DIR_SOURCES
   data_reader_npz_ras_lipid.cpp
   data_reader_smiles.cpp
   )
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)

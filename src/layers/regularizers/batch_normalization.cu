@@ -26,7 +26,7 @@
 
 #define LBANN_BATCH_NORMALIZATION_LAYER_INSTANTIATE
 #include "lbann/layers/regularizers/batch_normalization.hpp"
-#include "lbann/utils/cuda.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -78,8 +78,8 @@ __global__ void channel_sums_kernel(
 
   // Output channel sum to global memory
   if (tid == 0) {
-    cuda::atomic_add(&sums[bidy], shared_sums[0]);
-    cuda::atomic_add(&sqsums[bidy], shared_sqsums[0]);
+    gpu_lib::atomic_add(&sums[bidy], shared_sums[0]);
+    gpu_lib::atomic_add(&sqsums[bidy], shared_sqsums[0]);
   }
 
 }
@@ -146,7 +146,7 @@ __global__ void batch_normalization_kernel(
   const auto& bias = global_bias[bidy];
 
   // Get reciprocal of standard deviation
-  const auto& inv_stdev = cuda::rsqrt(var + epsilon);
+  const auto& inv_stdev = gpu_lib::rsqrt(var + epsilon);
 
   // Apply batch normalization
   if (gidx < channel_height) {
@@ -197,7 +197,7 @@ __global__ void backprop1_kernel(
 
   // Compute useful constants
   const TensorDataType zero = TensorDataType(0);
-  const auto& inv_stdev = cuda::rsqrt(var + epsilon);
+  const auto& inv_stdev = gpu_lib::rsqrt(var + epsilon);
   const auto& dvar_factor = inv_stdev * inv_stdev * inv_stdev / TensorDataType(2);
 
   // Compute row-wise gradient contributions in shared memory
@@ -237,10 +237,10 @@ __global__ void backprop1_kernel(
 
   // Output channel sum to global memory
   if (tid == 0) {
-    cuda::atomic_add(&global_dscale[bidy], shared_dscale[0]);
-    cuda::atomic_add(&global_dbias[bidy], shared_dbias[0]);
-    cuda::atomic_add(&global_dmean[bidy], shared_dmean[0]);
-    cuda::atomic_add(&global_dvar[bidy], shared_dvar[0]);
+    gpu_lib::atomic_add(&global_dscale[bidy], shared_dscale[0]);
+    gpu_lib::atomic_add(&global_dbias[bidy], shared_dbias[0]);
+    gpu_lib::atomic_add(&global_dmean[bidy], shared_dmean[0]);
+    gpu_lib::atomic_add(&global_dvar[bidy], shared_dvar[0]);
   }
 
 }
@@ -276,7 +276,7 @@ __global__ void backprop2_kernel(
   const auto& dvar = global_dvar[bidy];
 
   // Compute useful constants
-  const auto& inv_stdev = cuda::rsqrt(var + epsilon);
+  const auto& inv_stdev = gpu_lib::rsqrt(var + epsilon);
   const auto& dmean_term = dmean / TensorDataType(num_per_sum);
   const auto& dvar_term = dvar * TensorDataType(2) / TensorDataType(num_per_sum - 1);
 

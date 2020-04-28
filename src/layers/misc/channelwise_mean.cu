@@ -26,6 +26,7 @@
 
 #define LBANN_CHANNELWISE_MEAN_LAYER_INSTANTIATE
 #include "lbann/layers/misc/channelwise_mean.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -70,8 +71,8 @@ __global__ void mean_kernel(El::Int num_channels,
         }
       }
       if (tid == 0) {
-        cuda::atomic_add(&output[channel + col * output_ldim],
-                         shared_sums[0] / TensorDataType(channel_size));
+        gpu_lib::atomic_add(&output[channel + col * output_ldim],
+                            shared_sums[0] / TensorDataType(channel_size));
       }
 
     }

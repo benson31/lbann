@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   callback.cpp
   check_dataset.cpp
   check_gradients.cpp
@@ -40,6 +40,3 @@ set_source_path(THIS_DIR_SOURCES
   variable_minibatch.cpp
   load_model.cpp
 )
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)

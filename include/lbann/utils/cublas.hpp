@@ -28,7 +28,6 @@
 #define CUBLAS_WRAPPER_HPP_INCLUDED
 
 #include "lbann/base.hpp"
-#include "lbann/utils/cuda.hpp"
 #include "lbann/utils/exception.hpp"
 
 #ifdef LBANN_HAS_CUDA

@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   compound_data_reader.hpp
   data_reader.hpp
   data_reader_cifar10.hpp
@@ -18,6 +18,3 @@ set_source_path(THIS_DIR_HEADERS
   data_reader_synthetic.hpp
   data_reader_smiles.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

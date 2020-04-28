@@ -26,7 +26,7 @@
 
 #define LBANN_ENTRYWISE_BATCH_NORMALIZATION_LAYER_INSTANTIATE
 #include "lbann/layers/regularizers/entrywise_batch_normalization.hpp"
-#include "lbann/utils/cuda.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -189,7 +189,7 @@ __global__ void batchnorm_kernel(size_t height,
   for (size_t row = gidx; row < height; row += nthreadsx) {
     const auto& _mean = mean[row];
     const auto& _var = var[row];
-    const auto inv_stdev = cuda::rsqrt(_var + epsilon);
+    const auto inv_stdev = gpu_lib::rsqrt(_var + epsilon);
     for (size_t col = gidy; col < width; col += nthreadsy) {
       const auto& x = input[row + col*input_ldim];
       auto& y = output[row + col*output_ldim];
@@ -313,7 +313,7 @@ __global__ void bp_training_stats_gradient_kernel(size_t height,
   for (size_t row = gid; row < height; row += nthreads) {
     const auto& _mean = mean[row];
     const auto& _var = var[row];
-    const auto inv_stdev = cuda::rsqrt(_var + epsilon);
+    const auto inv_stdev = gpu_lib::rsqrt(_var + epsilon);
     auto& dmean = gradient_wrt_mean[row];
     auto& dvar = gradient_wrt_var[row];
     for (size_t col = 0; col < width; ++col) {
@@ -358,7 +358,7 @@ __global__ void bp_training_error_signal_kernel(size_t height,
     const auto& _var = var[row];
     const auto& dmean = gradient_wrt_mean[row];
     const auto& dvar = gradient_wrt_var[row];
-    const auto inv_stdev = cuda::rsqrt(_var + epsilon);
+    const auto inv_stdev = gpu_lib::rsqrt(_var + epsilon);
     for (size_t col = gidy; col < width; col += nthreadsy) {
       const auto& x = input[row + col * input_ldim];
       const auto& dy = gradient_wrt_output[row + col * gradient_wrt_output_ldim];
@@ -492,7 +492,7 @@ __global__ void bp_inference_kernel(size_t height,
   const size_t nthreadsy = blockDim.y * gridDim.y;
   for (size_t row = gidx; row < height; row += nthreadsx) {
     const auto& var = running_var[row];
-    const auto inv_stdev = cuda::rsqrt(var + epsilon);
+    const auto inv_stdev = gpu_lib::rsqrt(var + epsilon);
     for (size_t col = gidy; col < width; col += nthreadsy) {
       const auto& dy = gradient_wrt_output[row + col * gradient_wrt_output_ldim];
       auto& dx = gradient_wrt_input[row + col * gradient_wrt_input_ldim];

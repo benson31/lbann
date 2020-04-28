@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   any.hpp
   argument_parser.hpp
   compiler_control.hpp
@@ -11,7 +11,6 @@ set_source_path(THIS_DIR_HEADERS
   entrywise_operator.hpp
   enum_iterator.hpp
   environment_variable.hpp
-  eti_macros.hpp
   exception.hpp
   factory.hpp
   factory_error_policies.hpp
@@ -23,12 +22,11 @@ set_source_path(THIS_DIR_HEADERS
   lbann_library.hpp
   mild_exception.hpp
   number_theory.hpp
+  nvshmem.hpp
   omp_diagnostics.hpp
   opencv.hpp
   options.hpp
-  nvshmem.hpp
   profiling.hpp
-  prototext.hpp
   python.hpp
   random.hpp
   serialization.hpp
@@ -42,17 +40,16 @@ set_source_path(THIS_DIR_HEADERS
   )
 
 if (LBANN_HAS_HALF)
-  list(APPEND THIS_DIR_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/serialization.hpp)
+target_sources(lbann_cxx PRIVATE
+  serialization.hpp
+  )
 endif (LBANN_HAS_HALF)
 
 if (LBANN_HAS_DISTCONV)
-  list(APPEND THIS_DIR_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/distconv.hpp")
+  target_sources(lbann_cxx PRIVATE
+    distconv.hpp)
 endif ()
 
 # Add the subdirectories
 add_subdirectory(threads)
 add_subdirectory(impl)
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

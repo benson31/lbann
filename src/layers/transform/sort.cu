@@ -26,8 +26,8 @@
 
 #define LBANN_SORT_LAYER_INSTANTIATE
 #include "lbann/layers/transform/sort.hpp"
-#include "lbann/utils/cuda.hpp"
 #include "lbann/utils/exception.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 #include <thrust/system/cuda/execution_policy.h>
 #include <thrust/sequence.h>
@@ -49,21 +49,21 @@ void sort_layer<TensorDataType, T_layout, Dev>::fp_compute() {
 
   // GPU objects
   auto&& stream = El::GPUManager::Stream();
-  cuda::thrust::allocator<> alloc(stream);
+  gpu_lib::thrust::allocator<> alloc(stream);
 
   // Sort each matrix column
   El::Copy(local_input, local_output);
   for (El::Int col = 0; col < local_width; ++col) {
     ::thrust::device_ptr<TensorDataType> vals(local_output.Buffer(0, col));
     ::thrust::device_ptr<El::Int> inds(local_indices.Buffer(0, col));
-    ::thrust::sequence(thrust::cuda::par(alloc).on(stream),
+    ::thrust::sequence(thrust::gpu_lib::par(alloc).on(stream),
                        inds, inds + local_height);
     if (this->m_descending) {
-      ::thrust::sort_by_key(thrust::cuda::par(alloc).on(stream),
+      ::thrust::sort_by_key(thrust::gpu_lib::par(alloc).on(stream),
                             vals, vals + local_height, inds,
                             ::thrust::greater<TensorDataType>());
     } else {
-      ::thrust::sort_by_key(thrust::cuda::par(alloc).on(stream),
+      ::thrust::sort_by_key(thrust::gpu_lib::par(alloc).on(stream),
                             vals, vals + local_height, inds,
                             ::thrust::less<TensorDataType>());
     }
@@ -83,14 +83,14 @@ void sort_layer<TensorDataType, T_layout, Dev>::bp_compute() {
 
   // GPU objects
   auto&& stream = El::GPUManager::Stream();
-  cuda::thrust::allocator<> alloc(stream);
+  gpu_lib::thrust::allocator<> alloc(stream);
 
   // Scatter gradients based on sorted indices
   for (El::Int col = 0; col < local_width; ++col) {
     const ::thrust::device_ptr<const El::Int> inds(this->m_indices->LockedBuffer(0, col));
     const ::thrust::device_ptr<const TensorDataType> grad_wrt_out(local_gradient_wrt_output.LockedBuffer(0, col));
     ::thrust::device_ptr<TensorDataType> grad_wrt_in(local_gradient_wrt_input.Buffer(0, col));
-    ::thrust::scatter(thrust::cuda::par(alloc).on(stream),
+    ::thrust::scatter(thrust::gpu_lib::par(alloc).on(stream),
                       grad_wrt_out, grad_wrt_out + local_height, inds,
                       grad_wrt_in);
   }

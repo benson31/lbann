@@ -26,6 +26,7 @@
 
 #define LBANN_TESSELLATE_LAYER_INSTANTIATE
 #include "lbann/layers/transform/tessellate.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -110,7 +111,7 @@ __global__ void bp_gpu_3d_kernel(
                                + input_pos1 * input_dim2
                                + input_pos2);
     auto& dx = gradient_wrt_input[input_index + local_col * gradient_wrt_input_ldim];
-    cuda::atomic_add(&dx, dy);
+    gpu_lib::atomic_add(&dx, dy);
 
   }
 

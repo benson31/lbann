@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   objective_function.hpp
   objective_function_term.hpp
   layer_term.hpp
@@ -7,6 +7,3 @@ set_source_path(THIS_DIR_HEADERS
 
 # Add the subdirectories
 add_subdirectory(weight_regularization)
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

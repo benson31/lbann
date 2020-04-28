@@ -26,6 +26,7 @@
 
 #define LBANN_COVARIANCE_LAYER_INSTANTIATE
 #include "lbann/layers/misc/covariance.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -79,9 +80,9 @@ __global__ void mean_contribution_kernel(El::Int height,
       }
     }
     if (tid == 0) {
-      cuda::atomic_add(&contribution[2*col],
+      gpu_lib::atomic_add(&contribution[2*col],
                        scale * shared_contribution0[0]);
-      cuda::atomic_add(&contribution[2*col+1],
+      gpu_lib::atomic_add(&contribution[2*col+1],
                        scale * shared_contribution1[0]);
     }
 
@@ -131,7 +132,7 @@ __global__ void covariance_contribution_kernel(El::Int height,
       }
     }
     if (tid == 0) {
-      cuda::atomic_add(&contribution[col],
+      gpu_lib::atomic_add(&contribution[col],
                        scale * shared_contribution[0]);
     }
 

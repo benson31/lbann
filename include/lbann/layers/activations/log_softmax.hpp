@@ -28,7 +28,7 @@
 #define LBANN_LAYERS_ACTIVATIONS_LOG_SOFTMAX_HPP_INCLUDED
 
 #include "lbann/layers/data_type_layer.hpp"
-#include "lbann/utils/cudnn.hpp"
+#include "lbann/utils/dnn_primitives.hpp"
 
 namespace lbann {
 
@@ -51,7 +51,7 @@ public:
 
   log_softmax_layer(lbann_comm *comm)
     : data_type_layer<TensorDataType>(comm)
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
     , m_tensors_cudnn_desc(this)
 #endif // LBANN_HAS_CUDNN
   {}
@@ -60,11 +60,11 @@ public:
     : data_type_layer<TensorDataType>(other),
       m_workspace(other.m_workspace ?
                   other.m_workspace->Copy() : nullptr)
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
     , m_tensors_cudnn_desc(other.m_tensors_cudnn_desc)
 #endif // LBANN_HAS_CUDNN
   {
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
     m_tensors_cudnn_desc.set_layer(this);
 #endif // LBANN_HAS_CUDNN
   }
@@ -73,7 +73,7 @@ public:
     data_type_layer<TensorDataType>::operator=(other);
     m_workspace.reset(other.m_workspace ?
                       other.m_workspace->Copy() : nullptr);
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
     m_tensors_cudnn_desc = other.m_tensors_cudnn_desc;
     m_tensors_cudnn_desc.set_layer(this);
 #endif // LBANN_HAS_CUDNN
@@ -125,9 +125,9 @@ private:
   /** Workspace for column-wise reductions. */
   std::unique_ptr<AbsDistMatrixType> m_workspace;
 
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
   /** Tensor cuDNN descriptors. */
-  cudnn::data_parallel_layer_tensor_manager<TensorDataType> m_tensors_cudnn_desc;
+  dnn_primitive::data_parallel_layer_tensor_manager<TensorDataType> m_tensors_cudnn_desc;
 #endif // LBANN_HAS_CUDNN
 
 };

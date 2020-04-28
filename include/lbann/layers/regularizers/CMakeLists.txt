@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   batch_normalization.hpp
   dropout.hpp
   entrywise_batch_normalization.hpp
@@ -8,6 +8,3 @@ set_source_path(THIS_DIR_HEADERS
   regularizer.hpp
   selu_dropout.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

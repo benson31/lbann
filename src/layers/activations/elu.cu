@@ -26,6 +26,7 @@
 
 #define LBANN_ELU_LAYER_INSTANTIATE
 #include "lbann/layers/activations/elu.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -48,7 +49,7 @@ __global__ void fp_kernel(TensorDataType alpha,
     const auto& col = pos / height;
     const auto& x = input[row + col * input_ldim];
     auto& y = output[row + col * output_ldim];
-    y = (x > TensorDataType(0.0)) ? x : alpha * cuda::expm1(x);
+    y = (x > TensorDataType(0.0)) ? x : alpha * gpu_lib::expm1(x);
   }
 }
 
@@ -72,7 +73,7 @@ __global__ void bp_kernel(TensorDataType alpha,
     const auto& x = input[row + col * input_ldim];
     const auto& dy = gradient_wrt_output[row + col * gradient_wrt_output_ldim];
     auto& dx = gradient_wrt_input[row + col * gradient_wrt_input_ldim];
-    dx = (x > TensorDataType(0.0)) ? dy : dy * alpha * cuda::exp(x);
+    dx = (x > TensorDataType(0.0)) ? dy : dy * alpha * gpu_lib::exp(x);
   }
 }
 
@@ -96,7 +97,11 @@ void local_fp(TensorDataType alpha,
 
   // Launch CUDA kernel
   if (grid_dim > 0) {
-    fp_kernel<<<grid_dim, block_dim, 0, El::GPUManager::Stream()>>>(
+    using gpu_matrix_t = El::Matrix<TensorDataType, El::Device::GPU>;
+    hydrogen::gpu::LaunchKernel(
+      fp_kernel<TensorDataType>,
+      grid_dim, block_dim, 0,
+      El::SyncInfoFromMatrix(dynamic_cast<gpu_matrix_t&>(output)),
       alpha, height, width,
       input.LockedBuffer(), input.LDim(),
       output.Buffer(), output.LDim());
@@ -125,11 +130,17 @@ void local_bp(TensorDataType alpha,
 
   // Launch CUDA kernel
   if (grid_dim > 0) {
-    bp_kernel<<<grid_dim, block_dim, 0, El::GPUManager::Stream()>>>(
+    using gpu_matrix_t = El::Matrix<TensorDataType, El::Device::GPU>;
+    hydrogen::gpu::LaunchKernel(
+      bp_kernel<TensorDataType>,
+      grid_dim, block_dim, 0,
+      El::SyncInfoFromMatrix(dynamic_cast<gpu_matrix_t&>(gradient_wrt_input)),
       alpha, height, width,
       input.LockedBuffer(), input.LDim(),
-      gradient_wrt_output.LockedBuffer(), gradient_wrt_output.LDim(),
-      gradient_wrt_input.Buffer(), gradient_wrt_input.LDim());
+      gradient_wrt_output.LockedBuffer(),
+      gradient_wrt_output.LDim(),
+      gradient_wrt_input.Buffer(),
+      gradient_wrt_input.LDim());
   }
 
 }

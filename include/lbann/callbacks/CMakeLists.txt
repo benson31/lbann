@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   callback.hpp
   check_dataset.hpp
   check_gradients.hpp
@@ -39,6 +39,3 @@ set_source_path(THIS_DIR_HEADERS
   timer.hpp
   variable_minibatch.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

@@ -26,6 +26,7 @@
 
 #define LBANN_ENTRYWISE_SCALE_BIAS_LAYER_INSTANTIATE
 #include "lbann/layers/learning/entrywise_scale_bias.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -99,10 +100,11 @@ template <typename TensorDataType>
 void fp_impl(const El::Matrix<TensorDataType, El::Device::GPU>& local_input,
              El::Matrix<TensorDataType, El::Device::GPU>& local_output,
              const data_type_weights<TensorDataType>& scale_bias) {
+  using GPUMatType = El::Matrix<TensorDataType, El::Device::GPU>;
 
   // Local matrices
   const auto& local_scale_bias
-    = dynamic_cast<const El::Matrix<TensorDataType, El::Device::GPU>&>(scale_bias.get_values().LockedMatrix());
+    = dynamic_cast<const GPUMatType&>(scale_bias.get_values().LockedMatrix());
   const auto local_scale = El::LockedView(local_scale_bias,
                                           El::ALL, El::IR(0));
   const auto local_bias = El::LockedView(local_scale_bias,
@@ -112,6 +114,8 @@ void fp_impl(const El::Matrix<TensorDataType, El::Device::GPU>& local_input,
   const El::Int local_height = local_input.Height();
   const El::Int local_width = local_input.Width();
   if (!local_input.IsEmpty()) {
+    auto multisync = El::MakeMultiSync(gpu::get_sync_info(local_output),
+                                       gpu::get_sync_info(local_input));
     constexpr size_t block_size_x = 256;
     constexpr size_t block_size_y = 1;
     dim3 block_dims, grid_dims;
@@ -119,12 +123,14 @@ void fp_impl(const El::Matrix<TensorDataType, El::Device::GPU>& local_input,
     block_dims.y = block_size_y;
     grid_dims.x = (local_height + block_size_x - 1) / block_size_x;
     grid_dims.y = (local_width + block_size_y - 1) / block_size_y;
-    fp_kernel<<<grid_dims, block_dims, 0, El::GPUManager::Stream()>>>(
-        local_height, local_width,
-        local_input.LockedBuffer(), local_input.LDim(),
-        local_output.Buffer(), local_output.LDim(),
-        local_scale.LockedBuffer(),
-        local_bias.LockedBuffer());
+    hydrogen::gpu::LaunchKernel(
+      fp_kernel<TensorDataType>,
+      grid_dims, block_dims, 0, multisync,
+      local_height, local_width,
+      local_input.LockedBuffer(), local_input.LDim(),
+      local_output.Buffer(), local_output.LDim(),
+      local_scale.LockedBuffer(),
+      local_bias.LockedBuffer());
   }
 
 }
@@ -155,11 +161,17 @@ void bp_impl(const El::Matrix<TensorDataType, El::Device::GPU>& local_input,
   const El::Int local_width = local_input.Width();
   El::Zero(local_gradient_wrt_scale_bias);
   if (!local_input.IsEmpty()) {
+    auto multisync = El::MakeMultiSync(
+      gpu::get_sync_info(local_gradient_wrt_input),
+      gpu::get_sync_info(local_gradient_wrt_output),
+      gpu::get_sync_info(local_input));
     constexpr size_t block_size = 256;
     dim3 block_dims, grid_dims;
     block_dims.x = block_size;
     grid_dims.x = (local_height + block_size - 1) / block_size;
-    bp_kernel <<<grid_dims, block_dims, 0, El::GPUManager::Stream()>>>(
+    hydrogen::gpu::LaunchKernel(
+      bp_kernel<TensorDataType>,
+      grid_dims, block_dims, 0, multisync,
       local_height, local_width,
       local_input.LockedBuffer(), local_input.LDim(),
       local_gradient_wrt_output.LockedBuffer(), local_gradient_wrt_output.LDim(),

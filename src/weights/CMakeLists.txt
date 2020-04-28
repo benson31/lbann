@@ -1,10 +1,7 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   data_type_weights.cpp
   initializer.cpp
   variance_scaling_initializers.cpp
   weights.cpp
   )
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)

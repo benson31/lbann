@@ -1,5 +1,5 @@
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   Elemental_extensions.cpp
   base.cpp
   comm.cpp
@@ -27,8 +27,3 @@ add_subdirectory(weights)
 if (TARGET LbannProto)
   set(LBANN_HAS_LBANN_PROTO TRUE PARENT_SCOPE)
 endif ()
-
-# Propagate the files up the tree
-set(LBANN_HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)
-set(LBANN_SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)
-set(LBANN_CUDA_SOURCES "${CUDA_SOURCES}" "${THIS_DIR_CU_SOURCES}" PARENT_SCOPE)

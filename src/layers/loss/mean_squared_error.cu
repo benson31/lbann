@@ -26,6 +26,7 @@
 
 #define LBANN_MEAN_SQUARED_ERROR_LAYER_INSTANTIATE
 #include "lbann/layers/loss/mean_squared_error.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -69,7 +70,7 @@ __global__ void fp_kernel(int global_height,
     }
     if (tid == 0) {
       shared_contribution[0] /= global_height;
-      cuda::atomic_add(&contribution[col], shared_contribution[0]);
+      gpu_lib::atomic_add(&contribution[col], shared_contribution[0]);
     }
 
   }

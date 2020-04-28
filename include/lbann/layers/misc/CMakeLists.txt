@@ -1,14 +1,11 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
-  covariance.hpp
-  variance.hpp
-  channelwise_mean.hpp
-  mini_batch_index.hpp
-  mini_batch_size.hpp
+target_sources(lbann_cxx PRIVATE
   argmax.hpp
   argmin.hpp
+  channelwise_mean.hpp
+  covariance.hpp
+  mini_batch_index.hpp
+  mini_batch_size.hpp
   one_hot.hpp
+  variance.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

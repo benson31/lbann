@@ -96,7 +96,11 @@ void local_fp(TensorDataType negative_slope,
 
   // Launch CUDA kernel
   if (grid_dim > 0) {
-    fp_kernel<<<grid_dim, block_dim, 0, El::GPUManager::Stream()>>>(
+    using gpu_matrix_t = El::Matrix<TensorDataType, El::Device::GPU>;
+    hydrogen::gpu::LaunchKernel(
+      fp_kernel<TensorDataType>,
+      grid_dim, block_dim, 0,
+      El::SyncInfoFromMatrix(dynamic_cast<gpu_matrix_t&>(output)),
       negative_slope, height, width,
       input.LockedBuffer(), input.LDim(),
       output.Buffer(), output.LDim());
@@ -125,7 +129,11 @@ void local_bp(TensorDataType negative_slope,
 
   // Launch CUDA kernel
   if (grid_dim > 0) {
-    bp_kernel<<<grid_dim, block_dim, 0, El::GPUManager::Stream()>>>(
+    using gpu_matrix_t = El::Matrix<TensorDataType, El::Device::GPU>;
+    hydrogen::gpu::LaunchKernel(
+      bp_kernel<TensorDataType>,
+      grid_dim, block_dim, 0,
+      El::SyncInfoFromMatrix(dynamic_cast<gpu_matrix_t&>(gradient_wrt_input)),
       negative_slope, height, width,
       input.LockedBuffer(), input.LDim(),
       gradient_wrt_output.LockedBuffer(), gradient_wrt_output.LDim(),

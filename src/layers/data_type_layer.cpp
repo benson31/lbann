@@ -32,6 +32,7 @@
 #include "lbann/models/model.hpp"
 #include "lbann/trainers/trainer.hpp"
 #include "lbann/execution_contexts/sgd_execution_context.hpp"
+#include "lbann/utils/timer.hpp"
 
 namespace lbann {
 

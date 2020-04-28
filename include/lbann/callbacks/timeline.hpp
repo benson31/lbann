@@ -31,6 +31,7 @@
 
 #include <unordered_map>
 #include "lbann/callbacks/callback.hpp"
+#include "lbann/utils/timer.hpp"
 
 namespace lbann {
 namespace callback {

@@ -1,5 +1,5 @@
 # Add the headers for this directory
-set_source_path(THIS_DIR_HEADERS
+target_sources(lbann_cxx PRIVATE
   adjust_brightness.hpp
   adjust_contrast.hpp
   adjust_saturation.hpp
@@ -19,6 +19,3 @@ set_source_path(THIS_DIR_HEADERS
   to_lbann_layout.hpp
   vertical_flip.hpp
   )
-
-# Propagate the files up the tree
-set(HEADERS "${HEADERS}" "${THIS_DIR_HEADERS}" PARENT_SCOPE)

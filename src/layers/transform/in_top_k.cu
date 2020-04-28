@@ -26,7 +26,7 @@
 
 #define LBANN_IN_TOP_K_LAYER_INSTANTIATE
 #include "lbann/layers/transform/in_top_k.hpp"
-#include "lbann/utils/cuda.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 #include "lbann/utils/exception.hpp"
 
 #include <thrust/sort.h>
@@ -85,7 +85,7 @@ __global__ void dense_matrix_to_sparse_vectors(El::Int local_vector_size,
       current_entry.value = local_matrix[local_row + local_col * local_matrix_ldim];
       current_entry.index = global_row;
     } else {
-      current_entry.value = -cuda::infinity<DataType>();
+      current_entry.value = -gpu_lib::infinity<DataType>();
       current_entry.index = global_matrix_height;
     }
   }
@@ -190,17 +190,17 @@ void fp_gpu(lbann_comm& comm,
   // GPU objects
   auto&& stream = El::GPUManager::Stream();
   auto&& event = El::GPUManager::Event();
-  cuda::thrust::allocator<> alloc(stream);
+  gpu_lib::thrust::allocator<> alloc(stream);
 
   // Find top-k entries in each column of local prediction matrix
-  cuda::thrust::vector<entry<TensorDataType>> top_entries(local_width * k);
+  gpu_lib::thrust::vector<entry<TensorDataType>> top_entries(local_width * k);
   {
     const auto& num_local_entries_per_col = std::max(local_height, k);
     const auto& num_local_entries = local_width * num_local_entries_per_col;
     const auto& block_dim = 256;
     const auto& grid_dim = (num_local_entries + block_dim - 1) / block_dim;
-    cuda::thrust::vector<entry<TensorDataType>> local_entries(num_local_entries);
-    cuda::thrust::vector<El::Int> local_entries_cols(num_local_entries);
+    gpu_lib::thrust::vector<entry<TensorDataType>> local_entries(num_local_entries);
+    gpu_lib::thrust::vector<El::Int> local_entries_cols(num_local_entries);
     dense_matrix_to_sparse_vectors<<<grid_dim, block_dim, 0, stream>>>(
       num_local_entries_per_col, local_height, local_width, height,
       input.ColShift(), input.ColStride(),
@@ -234,8 +234,8 @@ void fp_gpu(lbann_comm& comm,
     const auto& num_entries = col_comm_size * num_entries_per_rank;
     const auto& block_dim = 256;
     const auto& grid_dim = (num_entries + block_dim - 1) / block_dim;
-    cuda::thrust::vector<entry<TensorDataType>> global_top_entries(num_entries);
-    cuda::thrust::vector<El::Int> global_top_entries_cols(num_entries);
+    gpu_lib::thrust::vector<entry<TensorDataType>> global_top_entries(num_entries);
+    gpu_lib::thrust::vector<El::Int> global_top_entries_cols(num_entries);
     comm.all_gather(reinterpret_cast<El::byte*>(top_entries.data().get()),
                     top_entries.size() * sizeof(entry<TensorDataType>),
                     reinterpret_cast<El::byte*>(global_top_entries.data().get()),

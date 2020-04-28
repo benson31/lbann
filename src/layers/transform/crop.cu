@@ -26,7 +26,7 @@
 
 #define LBANN_CROP_LAYER_INSTANTIATE
 #include "lbann/layers/transform/crop.hpp"
-#include "lbann/utils/cuda.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -180,12 +180,18 @@ void crop_layer<TensorDataType, T_layout, Dev>::fp_compute_3d() {
 
   // Launch CUDA kernel
   if (!local_output.IsEmpty()) {
+    auto multisync = El::MakeMultiSync(gpu::get_sync_info(local_output),
+                                       gpu::get_sync_info(local_input),
+                                       gpu::get_sync_info(local_crop_pos));
+
     const int block_size = 256;
     dim3 block_dims, grid_dims;
     block_dims.x = block_size;
     grid_dims.x = (output_size + block_size - 1) / block_size;
     grid_dims.y = local_width;
-    fp_compute_3d_kernel<<<grid_dims, block_dims, 0, El::GPUManager::Stream()>>>(
+    hydrogen::gpu::LaunchKernel(
+      fp_compute_3d_kernel<TensorDataType>,
+      grid_dims, block_dims, 0, multisync,
       input_dims[2], input_dims[1], input_dims[0],
       output_dims[2], output_dims[1], output_dims[0],
       local_width,
@@ -216,12 +222,19 @@ void crop_layer<TensorDataType, T_layout, Dev>::bp_compute_3d() {
 
   // Launch CUDA kernel
   if (!local_gradient_wrt_output.IsEmpty()) {
+    auto multisync = El::MakeMultiSync(
+      gpu::get_sync_info(local_gradient_wrt_input),
+      gpu::get_sync_info(local_gradient_wrt_output),
+      gpu::get_sync_info(local_crop_pos));
+
     const int block_size = 256;
     dim3 block_dims, grid_dims;
     block_dims.x = block_size;
     grid_dims.x = (output_size + block_size - 1) / block_size;
     grid_dims.y = local_width;
-    bp_compute_3d_kernel<<<grid_dims, block_dims, 0, El::GPUManager::Stream()>>>(
+    hydrogen::gpu::LaunchKernel(
+      bp_compute_3d_kernel<TensorDataType>,
+      grid_dims, block_dims, 0, multisync,
       input_dims[2], input_dims[1], input_dims[0],
       output_dims[2], output_dims[1], output_dims[0],
       local_width,

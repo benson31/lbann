@@ -26,6 +26,7 @@
 
 #define LBANN_EMBEDDING_LAYER_INSTANTIATE
 #include "lbann/layers/learning/embedding.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -101,7 +102,7 @@ __global__ void bp_kernel(El::Int num_embeddings,
         if (0<=ind && ind<num_embeddings && ind!=padding_idx) {
           const auto& dy = output_grad[i+j*embedding_dim+k*output_grad_ldim];
           auto& dw = embeddings_grad[i+ind*embeddings_grad_ldim];
-          cuda::atomic_add(&dw, dy);
+          gpu_lib::atomic_add(&dw, dy);
         }
       }
     }

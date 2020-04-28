@@ -29,10 +29,7 @@ if (LBANN_HAS_PTHREAD_SETAFFINITY_NP AND LBANN_HAS_PTHREAD_GETAFFINITY_NP)
 endif ()
 
 # Add the source files for this directory
-set_source_path(THIS_DIR_SOURCES
+target_sources(lbann_cxx PRIVATE
   thread_pool.cpp
   thread_utils.cpp
 )
-
-# Propagate the files up the tree
-set(SOURCES "${SOURCES}" "${THIS_DIR_SOURCES}" PARENT_SCOPE)

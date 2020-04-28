@@ -28,8 +28,9 @@
 #define LBANN_LAYERS_ACTIVATIONS_SOFTMAX_HPP_INCLUDED
 
 #include "lbann/layers/data_type_layer.hpp"
-#include "lbann/utils/cudnn.hpp"
+#include "lbann/utils/dnn_primitives.hpp"
 #include "lbann/utils/distconv.hpp"
+#include "lbann/utils/ml_enums.hpp"
 
 // Threshold outputs to a minimum value.
 
@@ -41,28 +42,6 @@
 #define LBANN_ENABLE_SOFTMAX_THRESHOLD
 
 namespace lbann {
-
-/** @brief Which tensor dimensions to apply softmax over. */
-enum class softmax_mode {
-  INVALID,
-  /** @brief Sample-wise softmax.
-   *
-   *  Slice tensor along the sample dimension (assuming data in NCHW
-   *  format) and apply softmax independently to each slice (once per
-   *  sample).
-   */
-  INSTANCE,
-  /** @brief Position-wise softmax.
-   *
-   *  Split tensor along all but the channel dimension (assuming data
-   *  in NCHW format) and apply softmax independently to each piece
-   *  (once per spatial position per sample).
-   *
-   *  This is not to be confused with @c channelwise_softmax, which
-   *  slices along the sample and channel dimensions.
-   */
-  CHANNEL
-};
 
 #ifdef LBANN_HAS_DISTCONV
 template <typename TensorDataType, data_layout T_layout, El::Device Dev>
@@ -100,7 +79,7 @@ public:
                 softmax_mode mode)
     : data_type_layer<TensorDataType>(comm),
       m_mode(mode)
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
     , m_tensors_cudnn_desc(this)
 #endif // LBANN_HAS_CUDNN
   {
@@ -114,11 +93,11 @@ public:
       m_mode(other.m_mode),
       m_workspace(other.m_workspace ?
                   other.m_workspace->Copy() : nullptr)
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
     , m_tensors_cudnn_desc(other.m_tensors_cudnn_desc)
 #endif // LBANN_HAS_CUDNN
   {
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
     m_tensors_cudnn_desc.set_layer(this);
 #endif // LBANN_HAS_CUDNN
   }
@@ -171,9 +150,9 @@ private:
   /** Workspace for column-wise reductions. */
   std::unique_ptr<AbsDistMatrixType> m_workspace;
 
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_CUDNN || defined LBANN_HAS_MIOPEN
   /** Tensor cuDNN descriptors. */
-  cudnn::data_parallel_layer_tensor_manager<TensorDataType> m_tensors_cudnn_desc;
+  dnn_primitive::data_parallel_layer_tensor_manager<TensorDataType> m_tensors_cudnn_desc;
 #endif // LBANN_HAS_CUDNN
 
 // Minimum output value to avoid denormalized floats

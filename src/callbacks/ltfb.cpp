@@ -26,11 +26,12 @@
 
 #include "lbann/callbacks/ltfb.hpp"
 #include "lbann/callbacks/imcomm.hpp"
-#include "lbann/utils/random.hpp"
 #include "lbann/optimizers/sgd.hpp"
 #include "lbann/optimizers/adam.hpp"
 #include "lbann/proto/proto_common.hpp"
 #include "lbann/weights/data_type_weights.hpp"
+#include "lbann/utils/random.hpp"
+#include "lbann/utils/timer.hpp"
 
 #include <callbacks.pb.h>
 

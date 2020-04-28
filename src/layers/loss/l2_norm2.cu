@@ -26,6 +26,7 @@
 
 #define LBANN_L2_NORM2_LAYER_INSTANTIATE
 #include "lbann/layers/loss/l2_norm2.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -65,7 +66,7 @@ __global__ void fp_kernel(El::Int local_height,
       }
     }
     if (tid == 0) {
-      cuda::atomic_add(&contribution[col], shared_contribution[0]);
+      gpu_lib::atomic_add(&contribution[col], shared_contribution[0]);
     }
 
   }

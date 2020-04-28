@@ -30,7 +30,7 @@
 #include "lbann/execution_contexts/sgd_execution_context.hpp"
 #include "lbann/utils/exception.hpp"
 #ifdef LBANN_HAS_GPU
-#include "lbann/utils/cublas.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 #endif // LBANN_HAS_GPU
 
 namespace lbann {
@@ -82,7 +82,7 @@ template <typename TensorDataType>
 void fp_gpu(lbann_comm& comm,
             const El::AbstractDistMatrix<TensorDataType>& input,
             TensorDataType& value,
-            cuda::event_wrapper& copy_event) {
+            gpu::event_wrapper& copy_event) {
   const TensorDataType zero = El::TypeTraits<TensorDataType>::Zero();
   const TensorDataType one = El::TypeTraits<TensorDataType>::One();
 
@@ -159,7 +159,7 @@ void fp_gpu(lbann_comm& comm,
 void fp_gpu(lbann_comm& comm,
             const El::AbstractDistMatrix<cpu_fp16>& input,
             cpu_fp16& value,
-            cuda::event_wrapper& copy_event) {
+            gpu::event_wrapper& copy_event) {
   LBANN_ERROR("This function is not supported with "
               "the CPU FP16 type on GPUs. "
               "A severe logic error has occured; please "

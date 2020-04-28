@@ -25,6 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/optimizers/adam.hpp"
+#include "lbann/utils/gpu_lib.hpp"
 
 namespace lbann {
 
@@ -55,7 +56,7 @@ __global__ void adam_noncontiguous_kernel(size_t height,
     auto& x = values[row + col * values_ldim];
     m1 = beta1 * m1 + (TensorDataType(1) - beta1) * g;
     m2 = beta2 * m2 + (TensorDataType(1) - beta2) * g * g;
-    x -= correction * m1 / (cuda::sqrt(m2) + eps);
+    x -= correction * m1 / (gpu_lib::sqrt(m2) + eps);
   }
 }
 
@@ -77,7 +78,7 @@ __global__ void adam_contiguous_kernel(size_t size,
     auto& x = values[gid];
     m1 = beta1 * m1 + (TensorDataType(1) - beta1) * g;
     m2 = beta2 * m2 + (TensorDataType(1) - beta2) * g * g;
-    x -= correction * m1 / (cuda::sqrt(m2) + eps);
+    x -= correction * m1 / (gpu_lib::sqrt(m2) + eps);
   }
 }
 
@@ -94,17 +95,29 @@ void adam<TensorDataType>::step_compute_gpu(AbsDistMatrixType& values,
   if (local_size <= 0) { return; }
 
   // Launch CUDA kernel
+  using GPUMatType = El::Matrix<TensorDataType, El::Device::GPU>;
+  auto get_sync_info = [](AbsDistMatrixType const& m) {
+    return El::SyncInfoFromMatrix(
+      dynamic_cast<GPUMatType const&>(m.LockedMatrix()));
+  };
+
+  auto multisync = El::MakeMultiSync(get_sync_info(values),
+                                     get_sync_info(gradient));
+
   constexpr size_t block_size = 256;
   const size_t grid_size = (local_size + block_size - 1) / block_size;
-  auto&& stream = El::GPUManager::Stream();
   if (values.Contiguous() && gradient.Contiguous()
       && m_moment1->Contiguous() && m_moment2->Contiguous()) {
-    adam_contiguous_kernel<TensorDataType><<<grid_size, block_size, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      adam_contiguous_kernel<TensorDataType>,
+      grid_size, block_size, 0, multisync,
       local_size, correction, m_eps, m_beta1, m_beta2,
       values.Buffer(), gradient.LockedBuffer(),
       m_moment1->Buffer(), m_moment2->Buffer());
   } else {
-    adam_noncontiguous_kernel<TensorDataType><<<grid_size, block_size, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      adam_noncontiguous_kernel<TensorDataType>,
+      grid_size, block_size, 0, multisync,
       local_height, local_width, correction, m_eps, m_beta1, m_beta2,
       values.Buffer(), values.LDim(),
       gradient.LockedBuffer(), gradient.LDim(),
