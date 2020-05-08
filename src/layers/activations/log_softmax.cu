@@ -26,8 +26,8 @@
 
 #define LBANN_LOG_SOFTMAX_LAYER_INSTANTIATE
 #include "lbann/layers/activations/log_softmax.hpp"
-#include "lbann/utils/dnn_primitives.hpp"
-#include "lbann/utils/gpu_lib.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
+#include "lbann/utils/gpu/helpers.hpp"
 
 namespace lbann {
 

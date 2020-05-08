@@ -26,7 +26,7 @@
 
 #define LBANN_RELU_LAYER_INSTANTIATE
 #include "lbann/layers/activations/relu.hpp"
-#include "lbann/utils/gpu_lib.hpp"
+#include "lbann/utils/gpu/helpers.hpp"
 
 namespace lbann {
 

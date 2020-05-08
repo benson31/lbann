@@ -26,7 +26,7 @@
 
 #define LBANN_CATEGORICAL_ACCURACY_LAYER_INSTANTIATE
 #include "lbann/layers/loss/categorical_accuracy.hpp"
-#include "lbann/utils/gpu_lib.hpp"
+#include "lbann/utils/gpu/helpers.hpp"
 
 namespace lbann {
 

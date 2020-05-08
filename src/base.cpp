@@ -46,7 +46,7 @@
 #include "lbann/utils/stack_trace.hpp"
 
 #ifdef LBANN_HAS_GPU
-#include "lbann/utils/dnn_primitives.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
 #endif
 #ifdef LBANN_HAS_PYTHON
 #include "lbann/utils/python.hpp"

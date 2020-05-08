@@ -25,8 +25,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define LBANN_CONCATENATE_LAYER_INSTANTIATE
+
 #include "lbann/layers/transform/concatenate.hpp"
-#include "lbann/utils/gpu_lib.hpp"
+#include "lbann/utils/gpu/helpers.hpp"
 
 namespace lbann {
 
@@ -223,9 +224,9 @@ void fp_compute_impl(
     rstrides.resize(4, rstrides.back());
 
     input_buffer_list.push_back(input.LockedBuffer());
-    input_dims_list.push_back({rdims[3], rdims[2], rdims[1], rdims[0]});
+    input_dims_list.push_back(dim4{{rdims[3], rdims[2], rdims[1], rdims[0]}});
     input_strides_list.push_back(
-      {rstrides[3], rstrides[2], rstrides[1], rstrides[0]});
+      dim4{rstrides[3], rstrides[2], rstrides[1], rstrides[0]});
     max_input_size = std::max(max_input_size,
                               rdims[3]*rdims[2]*rdims[1]*rdims[0]);
   }
@@ -250,7 +251,8 @@ void fp_compute_impl(
     rdims.resize(4, 1);
     rstrides.resize(4, rstrides.back());
 
-    output_strides = {rstrides[3], rstrides[2], rstrides[1], rstrides[0]};
+    // Hack to get around HIPCC issue with array::operator=
+    std::copy(rstrides.rbegin(), rstrides.rend(), &output_strides.vals[0]);
   }
 
   // Compute each input tensor's offset in output tensor
@@ -285,15 +287,14 @@ void fp_compute_impl(
   pos += sizeof(size_t) * output_offset_list.size();
 
   // Copy tensor data to GPU
-  auto&& stream = El::GPUManager::Stream();
+  auto sync_info = gpu::get_sync_info(output);
   gpu_lib::thrust::vector<unsigned char> device_workspace(l.m_workspace.size());
   unsigned char* device_workspace_ptr = device_workspace.data().get();
-  cudaMemcpyAsync(device_workspace_ptr,
-                  l.m_workspace.data(),
-                  l.m_workspace.size(),
-                  cudaMemcpyHostToDevice,
-                  stream);
-  l.m_workspace_event.record(stream);
+  hydrogen::gpu::Copy1DToDevice(l.m_workspace.data(),
+                                device_workspace_ptr,
+                                l.m_workspace.size(),
+                                sync_info);
+  l.m_workspace_event.record(sync_info.Stream());
   pos = 0;
   auto&& device_input_buffer_list
     = reinterpret_cast<const TensorDataType**>(device_workspace_ptr+pos);
@@ -308,14 +309,16 @@ void fp_compute_impl(
     = reinterpret_cast<const size_t*>(device_workspace_ptr+pos);
   pos += sizeof(size_t) * output_offset_list.size();
 
-  // Launch CUDA kernel
+  // Launch kernel
   if (max_input_size > 0) {
     constexpr size_t block_size = 256;
     dim3 block_dims, grid_dims;
     block_dims.x = block_size;
     grid_dims.x = (max_input_size + block_size - 1) / block_size;
     grid_dims.y = num_inputs;
-    concat4d_kernel<<<grid_dims, block_dims, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      concat4d_kernel<TensorDataType>,
+      grid_dims, block_dims, 0, sync_info,
       num_inputs,
       device_input_buffer_list,
       device_input_dims_list,
@@ -346,6 +349,9 @@ void bp_compute_impl(
   std::vector<TensorDataType*> input_grad_buffer_list;
   std::vector<dim4> input_grad_dims_list, input_grad_strides_list;
   size_t max_input_grad_size = 0;
+  // FIXME (trb 04/28/2020): This is probably not sufficient
+  // synchronization for this. But it's a start.
+  auto sync_info = gpu::get_sync_info(l.get_error_signals(0));
   for (size_t j=0; j<num_inputs; ++j) {
     auto& input_grad = l.get_error_signals(j);
     const auto& input_grad_dims = l.get_input_dims(j);
@@ -365,9 +371,10 @@ void bp_compute_impl(
     rstrides.resize(4, rstrides.back());
 
     input_grad_buffer_list.push_back(input_grad.Buffer());
-    input_grad_dims_list.push_back({rdims[3], rdims[2], rdims[1], rdims[0]});
+    input_grad_dims_list.push_back(
+      dim4{rdims[3], rdims[2], rdims[1], rdims[0]});
     input_grad_strides_list.push_back(
-      {rstrides[3], rstrides[2], rstrides[1], rstrides[0]});
+      dim4{rstrides[3], rstrides[2], rstrides[1], rstrides[0]});
     max_input_grad_size = std::max(max_input_grad_size,
                                    rdims[3]*rdims[2]*rdims[1]*rdims[0]);
   }
@@ -392,7 +399,7 @@ void bp_compute_impl(
     rdims.resize(4, 1);
     rstrides.resize(4, rstrides.back());
 
-    output_grad_strides = {rstrides[3], rstrides[2], rstrides[1], rstrides[0]};
+    std::copy(rstrides.rbegin(), rstrides.rend(), &output_grad_strides.vals[0]);
   }
 
   // Compute each input gradient tensor's offset in output gradient tensor
@@ -427,15 +434,13 @@ void bp_compute_impl(
   pos += sizeof(dim4) * input_grad_strides_list.size();
 
   // Copy tensor data to GPU
-  auto&& stream = El::GPUManager::Stream();
   gpu_lib::thrust::vector<unsigned char> device_workspace(l.m_workspace.size());
   unsigned char* device_workspace_ptr = device_workspace.data().get();
-  cudaMemcpyAsync(device_workspace_ptr,
-                  l.m_workspace.data(),
-                  l.m_workspace.size(),
-                  cudaMemcpyHostToDevice,
-                  stream);
-  l.m_workspace_event.record(stream);
+  hydrogen::gpu::Copy1DToDevice(l.m_workspace.data(),
+                                device_workspace_ptr,
+                                l.m_workspace.size(),
+                                sync_info);
+  l.m_workspace_event.record(sync_info.Stream());
   pos = 0;
   auto&& device_output_grad_offset_list
     = reinterpret_cast<const size_t*>(device_workspace_ptr+pos);
@@ -450,14 +455,16 @@ void bp_compute_impl(
     = reinterpret_cast<const dim4*>(device_workspace_ptr+pos);
   pos += sizeof(dim4) * input_grad_strides_list.size();
 
-  // Launch CUDA kernel
+  // Launch kernel
   if (max_input_grad_size > 0) {
     constexpr size_t block_size = 256;
     dim3 block_dims, grid_dims;
     block_dims.x = block_size;
     grid_dims.x = (max_input_grad_size + block_size - 1) / block_size;
     grid_dims.y = num_inputs;
-    slice4d_kernel<<<grid_dims, block_dims, 0, stream>>>(
+    hydrogen::gpu::LaunchKernel(
+      slice4d_kernel<TensorDataType>,
+      grid_dims, block_dims, 0, sync_info,
       num_inputs,
       output_grad.LockedBuffer(),
       output_grad_strides,
@@ -472,9 +479,10 @@ void bp_compute_impl(
 // Explicit instantiation
 #define PROTO(T)                                                        \
   template class concatenate_layer<                                     \
-    T, data_layout::DATA_PARALLEL, El::Device::GPU>;                    \
-  template class concatenate_layer<                                     \
-    T, data_layout::MODEL_PARALLEL, El::Device::GPU>
+    T, data_layout::DATA_PARALLEL, El::Device::GPU>
+//                                                                      \
+//  template class concatenate_layer<                                     \
+//    T, data_layout::MODEL_PARALLEL, El::Device::GPU>
 
 #define LBANN_INSTANTIATE_GPU_HALF
 #include "lbann/macros/instantiate.hpp"

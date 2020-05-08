@@ -29,8 +29,20 @@
 namespace lbann
 {
 
+/** @name Pooling layer */
+///@{
+
+enum class pooling_mode
+{
+  MAX,
+  AVERAGE,
+  AVERAGE_NO_PAD,
+};// enum class PoolingMode
+
+///@}
 /** @name Softmax layer */
 ///@{
+
 /** @brief Which tensor dimensions to apply softmax over. */
 enum class softmax_mode
 {
@@ -52,7 +64,7 @@ enum class softmax_mode
    *  This is not to be confused with @c channelwise_softmax, which
    *  slices along the sample and channel dimensions.
    */
-  CHANNEL
+  CHANNEL,
 };// enum class softmax_mode
 
 /** @brief Which algorithm to use to apply softmax. */

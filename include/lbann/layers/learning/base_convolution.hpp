@@ -32,7 +32,7 @@
 #include "lbann/layers/data_type_layer.hpp"
 #include "lbann/weights/initializer.hpp"
 #include "lbann/weights/variance_scaling_initializers.hpp"
-#include "lbann/utils/cudnn.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
 #include "lbann/utils/exception.hpp"
 #include "lbann/utils/random.hpp"
 #include "lbann/utils/timer.hpp"
@@ -499,7 +499,7 @@ public:
   void setup_gpu() override {
     data_type_layer<TensorDataType>::setup_gpu();
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     const auto& output_dims = this->get_output_dims();
@@ -545,7 +545,7 @@ protected:
   /** Convolution with cuDNN. */
   void apply_convolution_cudnn(bool during_forward_prop) {
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     // Useful constants
@@ -622,7 +622,7 @@ protected:
   /** Transposed convolution with cuDNN. */
   void apply_transposed_convolution_cudnn(bool during_forward_prop) {
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     // Useful constants
@@ -700,7 +700,7 @@ protected:
 
   void apply_bias_cudnn() {
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
     auto& local_output = this->get_local_activations();
     if (m_bias_scaling_factor != El::TypeTraits<ScalingType>::Zero()
@@ -721,7 +721,7 @@ protected:
 
   void compute_gradients_cudnn(bool using_transposed_convolution) {
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     // Matrices

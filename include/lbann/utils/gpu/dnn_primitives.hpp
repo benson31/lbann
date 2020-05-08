@@ -30,9 +30,9 @@
 #include "lbann_config.hpp"
 
 #if defined LBANN_HAS_CUDNN
-#include "cudnn.hpp"
+#include "dnn_primitive_libs/cudnn.hpp"
 #elif defined LBANN_HAS_MIOPEN
-#include "miopen.hpp"
+#include "dnn_primitive_libs/miopen.hpp"
 #endif
 
 #include "lbann/layers/data_type_layer.hpp"
@@ -406,22 +406,110 @@ void ConvolutionBackward(...);
 ///@{
 
 ///@}
+/** @name Local Response Normalization operations */
+///@{
+
+using LRNDescriptor_t = impl::LRNDescriptor_t;
+
+/** @brief Create a new LRN descriptor */
+LRNDescriptor_t create_lrn_descriptor();
+
+/** @brief Destroy a LRN descriptor.
+ *  @details The descriptor is set to null at exit.
+ */
+void destroy_lrn_descriptor(LRNDescriptor_t& lrnd);
+
+/** @brief Copy an LRN descriptor. */
+void copy_lrn_descriptor(LRNDescriptor_t const& src,
+                         LRNDescriptor_t& dst);
+
+/** @brief Set an LRN descriptor */
+void set_lrn_descriptor(LRNDescriptor_t& lrnd,
+                        unsigned N, double alpha, double beta, double K);
+
+/** @brief Forward pass of LRN. */
+template <typename T>
+void lrn_cross_channel_forward(
+  LRNDescriptor_t normDesc,
+  T const alpha,
+  TensorDescriptor_t const xDesc,
+  T const* x,
+  T const beta,
+  TensorDescriptor_t const yDesc,
+  T* y,
+  El::SyncInfo<El::Device::GPU> const& si);
+
+/** @brief Backward pass of LRN. */
+template <typename T>
+void lrn_cross_channel_backward(
+  LRNDescriptor_t normDesc,
+  T const alpha,
+  TensorDescriptor_t const yDesc,
+  T const* y,
+  TensorDescriptor_t const dyDesc,
+  T const* dy,
+  TensorDescriptor_t const xDesc,
+  T const* x,
+  T const beta,
+  TensorDescriptor_t const dxDesc,
+  T* dx,
+  El::SyncInfo<El::Device::GPU> const& si);
+
+///@}
 /** @name Pooling operations */
 ///@
 
 using PoolingDescriptor_t = impl::PoolingDescriptor_t;
 using PoolingMode_t = impl::PoolingMode_t;
 
-PoolingDescriptor_t CreatePoolingDescriptor();
-// Destroy?
-// SetPoolingDescriptor?
-// Copy?
+/** @brief Convert an LBANN PoolingMode to a backend-specific mode. */
+PoolingMode_t get_pooling_mode(lbann::pooling_mode pm);
+
+/** @brief Create a new pooling descriptor. */
+PoolingDescriptor_t create_pooling_descriptor();
+
+/** @brief Copy a pooling descriptor. */
+void copy_pooling_descriptor(PoolingDescriptor_t const& src,
+                             PoolingDescriptor_t& dst);
+
+/** @brief Destroy a pooling descriptor. */
+void destroy_pooling_descriptor(PoolingDescriptor_t& pd);
+
+/** @brief Set up a pooling descriptor. */
+void set_pooling_descriptor(PoolingDescriptor_t pd,
+                            pooling_mode mode,
+                            int dims,
+                            int const windowDimsA[],
+                            int const padA[],
+                            int const stridesA[]);
 
 /** @brief The DNN primitive execution of the forward pooling operation. */
-void PoolingForward(...);
+template <typename T>
+void pooling_forward(
+  PoolingDescriptor_t const poolingDesc,
+  T alpha,
+  TensorDescriptor_t const xDesc,
+  T const x[],
+  T beta,
+  TensorDescriptor_t const yDesc,
+  T y[],
+  El::SyncInfo<El::Device::GPU> const& si);
 
 /** @brief The DNN primitive execution of the backward pooling operation. */
-void PoolingBackward(...);
+template <typename T>
+void pooling_backward(
+    PoolingDescriptor_t const poolingDesc,
+    T alpha,
+    TensorDescriptor_t const yDesc,
+    T const y[],
+    TensorDescriptor_t const dyDesc,
+    T const dy[],
+    TensorDescriptor_t const xDesc,
+    T const xData[],
+    T beta,
+    TensorDescriptor_t const dxDesc,
+    T dx[],
+    El::SyncInfo<El::Device::GPU> const& si);
 
 ///@}
 /** @name Softmax operations */

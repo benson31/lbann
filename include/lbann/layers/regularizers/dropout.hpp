@@ -29,7 +29,7 @@
 
 #include "lbann/layers/regularizers/regularizer.hpp"
 #include "lbann/models/model.hpp"
-#include "lbann/utils/cudnn.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
 #include "lbann/utils/random.hpp"
 
 namespace lbann {
@@ -156,7 +156,7 @@ protected:
   void setup_gpu() override {
     regularizer_layer<TensorDataType>::setup_gpu();
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     // Initialize cuDNN objects
@@ -233,7 +233,7 @@ protected:
 
   void fp_compute_gpu() {
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     // Matrices
@@ -272,7 +272,7 @@ protected:
 
   void bp_compute_gpu() {
 #ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     // Matrices

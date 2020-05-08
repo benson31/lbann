@@ -26,7 +26,7 @@
 
 #define LBANN_CHANNELWISE_SCALE_BIAS_LAYER_INSTANTIATE
 #include "lbann/layers/learning/channelwise_scale_bias.hpp"
-#include "lbann/utils/gpu_lib.hpp"
+#include "lbann/utils/gpu/helpers.hpp"
 
 #ifdef HYDROGEN_HAVE_CUB
 #include "cub/block/block_reduce.cuh"

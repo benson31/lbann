@@ -24,9 +24,10 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LBANN_UTILS_GPU_LIB_HPP_INCLUDED
-#define LBANN_UTILS_GPU_LIB_HPP_INCLUDED
+#ifndef LBANN_UTILS_GPU_HELPERS_HPP_INCLUDED
+#define LBANN_UTILS_GPU_HELPERS_HPP_INCLUDED
 
+// Import the GPU __device__ function library
 #ifdef LBANN_HAS_CUDA
 
 #include "cuda.hpp"
@@ -43,25 +44,9 @@ namespace gpu_lib = ::lbann::hip;
 
 #endif // LBANN_HAS_CUDA
 
-#include "gpu/event_wrapper.hpp"
+// Import additional helper utilities
 
-namespace lbann {
-namespace gpu {
+#include "event_wrapper.hpp"
+#include "sync_info_helpers.hpp"
 
-template <typename TensorDataType>
-El::SyncInfo<El::Device::GPU> get_sync_info(
-  El::AbstractMatrix<TensorDataType> const& m) {
-  using GPUMatType = El::Matrix<TensorDataType, El::Device::GPU>;
-  return El::SyncInfoFromMatrix(dynamic_cast<GPUMatType const&>(m));
-}
-
-template <typename TensorDataType>
-El::SyncInfo<El::Device::GPU> get_sync_info(
-  El::AbstractDistMatrix<TensorDataType> const& m) {
-  using GPUMatType = El::Matrix<TensorDataType, El::Device::GPU>;
-  return El::SyncInfoFromMatrix(dynamic_cast<GPUMatType const&>(m.LockedMatrix()));
-}
-
-} // namespace gpu
-} // namespace lbann
-#endif // LBANN_UTILS_GPU_LIB_HPP_INCLUDED
+#endif // LBANN_UTILS_GPU_HELPERS_HPP_INCLUDED

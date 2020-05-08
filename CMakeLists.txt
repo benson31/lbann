@@ -193,12 +193,12 @@ set(LBANN_HAS_CEREAL ${CEREAL_FOUND})
 # The imported target is just called "cereal". Super.
 
 # Setup the linear algebra library
-find_package(Hydrogen 1.3.3 NO_MODULE QUIET
+find_package(Hydrogen 1.4.0 NO_MODULE QUIET
   HINTS ${Hydrogen_DIR} ${HYDROGEN_DIR} $ENV{Hydrogen_DIR} $ENV{HYDROGEN_DIR}
   PATH_SUFFIXES lib/cmake/hydrogen
   NO_DEFAULT_PATH)
 if (NOT Hydrogen_FOUND)
-  find_package(Hydrogen 1.3.3 NO_MODULE QUIET REQUIRED)
+  find_package(Hydrogen 1.4.0 NO_MODULE QUIET REQUIRED)
 endif ()
 message(STATUS "Found Hydrogen: ${Hydrogen_DIR}")
 set(LBANN_HAS_HYDROGEN ${Hydrogen_FOUND})
@@ -272,9 +272,6 @@ endif ()
 if (LBANN_HAS_ROCM)
   list(APPEND CMAKE_MODULE_PATH /opt/rocm/hip/cmake)
   find_package(HIP MODULE REQUIRED)
-  if (HIP_FOUND)
-    message("\n\n\nFOUND HIP!\n\n\n")
-  endif ()
   find_package(MIOpen CONFIG REQUIRED)
   set(LBANN_HAS_MIOPEN TRUE)
 endif (LBANN_HAS_ROCM)
@@ -294,13 +291,13 @@ if (LBANN_WITH_ALUMINUM)
   if (NOT Aluminum_FOUND)
     message(WARNING
       "Using Aluminum without Hydrogen support may not be well-supported.")
-    find_package(Aluminum 0.3.0 NO_MODULE QUIET
+    find_package(Aluminum 0.4.0 NO_MODULE QUIET
       HINTS ${Aluminum_DIR} ${ALUMINUM_DIR} ${AL_DIR}
       $ENV{Aluminum_DIR} $ENV{ALUMINUM_DIR} $ENV{AL_DIR}
       PATH_SUFFIXES lib64/cmake/aluminum lib/cmake/aluminum
       NO_DEFAULT_PATH)
     if (NOT Aluminum_FOUND)
-      find_package(Aluminum 0.3.0 NO_MODULE QUIET)
+      find_package(Aluminum 0.4.0 NO_MODULE QUIET)
     endif ()
   endif ()
   set(LBANN_HAS_ALUMINUM ${Aluminum_FOUND})
@@ -579,7 +576,6 @@ if (LBANN_HAS_GPU)
   get_target_property(_LBANN_GPU_SRCS lbann_gpu_srcs INTERFACE_SOURCES)
   set_target_properties(lbann_gpu_srcs PROPERTIES INTERFACE_SOURCES "")
 
-  message("\n\n\n${_LBANN_GPU_SRCS}\n\n\n")
   if (LBANN_HAS_ROCM)
     hip_add_library(lbann_gpu STATIC ${_LBANN_GPU_SRCS})
   elseif (LBANN_HAS_CUDA)
@@ -641,7 +637,7 @@ if (LBANN_HAS_GPU)
   target_link_libraries(lbann_gpu PUBLIC
     LbannProto
     TBinf
-    
+
     ${HYDROGEN_LIBRARIES}
 
     # Third-party # FIXME: These shouldn't be here!

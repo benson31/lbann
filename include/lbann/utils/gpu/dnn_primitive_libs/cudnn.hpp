@@ -27,42 +27,42 @@
 #ifndef LBANN_UTILS_CUDNN_HPP
 #define LBANN_UTILS_CUDNN_HPP
 
+#ifdef LBANN_HAS_CUDNN
+
 #include "lbann/base.hpp"
-#include "lbann/utils/cuda.hpp"
-#include "lbann/utils/exception.hpp"
 #include "lbann/layers/layer.hpp"
 #include "lbann/layers/data_type_layer.hpp"
+#include "lbann/utils/exception.hpp"
+#include "lbann/utils/gpu/cuda.hpp"
 #include <vector>
-
-#ifdef LBANN_HAS_CUDNN
 
 #include <cudnn.h>
 
 // Error utility macros
-#define CHECK_CUDNN_NODEBUG(cudnn_call)                         \
-  do {                                                          \
-    const cudnnStatus_t status_CHECK_CUDNN = (cudnn_call);      \
-    if (status_CHECK_CUDNN != CUDNN_STATUS_SUCCESS) {           \
-      cudaDeviceReset();                                        \
-      LBANN_ERROR(std::string("cuDNN error (")                  \
-                  + cudnnGetErrorString(status_CHECK_CUDNN)     \
-                  + std::string(")"));                          \
-    }                                                           \
+#define LBANN_CHECK_CUDNN_NODEBUG(cudnn_call)                           \
+  do {                                                                  \
+    const cudnnStatus_t status_LBANN_CHECK_CUDNN = (cudnn_call);        \
+    if (status_LBANN_CHECK_CUDNN != CUDNN_STATUS_SUCCESS) {             \
+      cudaDeviceReset();                                                \
+      LBANN_ERROR(std::string("cuDNN error (")                          \
+                  + cudnnGetErrorString(status_LBANN_CHECK_CUDNN)       \
+                  + std::string(")"));                                  \
+    }                                                                   \
   } while (0)
-#define CHECK_CUDNN_DEBUG(cudnn_call)                           \
-  do {                                                          \
-    LBANN_CUDA_CHECK_LAST_ERROR(true);                          \
-    CHECK_CUDNN_NODEBUG(cudnn_call);                            \
+#define LBANN_CHECK_CUDNN_DEBUG(cudnn_call)     \
+  do {                                          \
+    LBANN_CUDA_CHECK_LAST_ERROR(true);          \
+    LBANN_CHECK_CUDNN_NODEBUG(cudnn_call);      \
   } while (0)
 #ifdef LBANN_DEBUG
-#define CHECK_CUDNN(cudnn_call) CHECK_CUDNN_DEBUG(cudnn_call)
+#define LBANN_CHECK_CUDNN(cudnn_call) LBANN_CHECK_CUDNN_DEBUG(cudnn_call)
 #else
-#define CHECK_CUDNN(cudnn_call) CHECK_CUDNN_NODEBUG(cudnn_call)
+#define LBANN_CHECK_CUDNN(cudnn_call) LBANN_CHECK_CUDNN_NODEBUG(cudnn_call)
 #endif // #ifdef LBANN_DEBUG
 
-#define CHECK_CUDNN_DTOR(cudnn_call)            \
-  try {                                         \
-    CHECK_CUDNN(cudnn_call);                                            \
+#define LBANN_CHECK_CUDNN_DTOR(cudnn_call)                              \
+  try {                                                                 \
+    LBANN_CHECK_CUDNN(cudnn_call);                                      \
   }                                                                     \
   catch (std::exception const& e) {                                     \
     std::cerr << "Caught exception:\n\n    what(): "                    \
@@ -95,6 +95,14 @@ using TensorDescriptor_t = cudnnTensorDescriptor_t;
 using ConvolutionFwdAlgo_t = cudnnConvolutionFwdAlgo_t;
 using ConvolutionBwdDataAlgo_t = cudnnConvolutionBwdDataAlgo_t;
 using ConvolutionBwdFilterAlgo_t = cudnnConvolutionBwdFilterAlgo_t;
+
+using LRNDescriptor_t = cudnnLRNDescriptor_t;
+
+using PoolingDescriptor_t = cudnnPoolingDescriptor_t;
+using PoolingMode_t = cudnnPoolingMode_t;
+
+using SoftmaxAlgorithm_t = cudnnSoftmaxAlgorithm_t;
+using SoftmaxMode_t = cudnnSoftmaxMode_t;
 
 ///@}
 

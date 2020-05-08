@@ -27,7 +27,7 @@
 #include "lbann/utils/miopen.hpp"
 
 #include "lbann/layers/layer.hpp"
-#include "lbann/utils/dnn_primitives.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
 #include "lbann/utils/exception.hpp"
 #include "lbann/utils/memory.hpp"
 #include "lbann/utils/number_theory.hpp"

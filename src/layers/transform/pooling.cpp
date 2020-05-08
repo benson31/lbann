@@ -28,6 +28,9 @@
 #include "lbann/layers/transform/pooling.hpp"
 
 #include <lbann/proto/proto_common.hpp>
+
+#include <lbann/utils/ml_enums.hpp>
+
 #include <lbann.pb.h>
 
 namespace lbann {
@@ -70,10 +73,18 @@ std::unique_ptr<Layer> build_pooling_layer_from_pbuf(
   const auto& params = proto_layer.pooling();
 
   const auto& mode_str = params.pool_mode();
-  pool_mode mode = pool_mode::invalid;
-  if (mode_str == "max" )            { mode = pool_mode::max; }
-  if (mode_str == "average" )        { mode = pool_mode::average; }
-  if (mode_str == "average_no_pad" ) { mode = pool_mode::average_no_pad; }
+  pooling_mode mode;
+  if (mode_str == "max" ) {
+    mode = pooling_mode::MAX;
+  }
+  else if (mode_str == "average" ) {
+    mode = pooling_mode::AVERAGE;
+  }
+  else if (mode_str == "average_no_pad" ) {
+    mode = pooling_mode::AVERAGE_NO_PAD; }
+  else {
+    LBANN_ERROR("Unknown pooling mode value \"", mode_str, "\".");
+  }
   if (params.has_vectors()) {
     const auto& dims = parse_list<int>(params.pool_dims());
     const auto& pads = parse_list<int>(params.pool_pads());

@@ -28,7 +28,7 @@
 #define LBANN_LAYERS_ACTIVATIONS_SOFTMAX_HPP_INCLUDED
 
 #include "lbann/layers/data_type_layer.hpp"
-#include "lbann/utils/dnn_primitives.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
 #include "lbann/utils/distconv.hpp"
 #include "lbann/utils/ml_enums.hpp"
 

@@ -24,8 +24,7 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "lbann/utils/dnn_primitives.hpp"
-#include "lbann/utils/cudnn.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
 #include "lbann/utils/memory.hpp"
 #include "lbann/utils/number_theory.hpp"
 
@@ -48,28 +47,58 @@ namespace cudnn {
 namespace {
 
 /** Wrapper for cuDNN handle. */
-struct handle_wrapper {
+struct cudnnHandleWrapper {
   cudnnHandle_t handle;
-  handle_wrapper() : handle(nullptr) {
-    CHECK_CUDA(cudaSetDevice(El::GPUManager::Device()));
-    if (handle == nullptr) { CHECK_CUDNN(cudnnCreate(&handle)); }
+  cudnnHandleWrapper() : handle(nullptr) {
+    if (handle == nullptr) { LBANN_CHECK_CUDNN(cudnnCreate(&handle)); }
     if (handle == nullptr) { LBANN_ERROR("failed to create cuDNN handle"); }
-    CHECK_CUDNN(cudnnSetStream(handle, El::GPUManager::Stream()));
+    LBANN_CHECK_CUDNN(cudnnSetStream(handle, hydrogen::cuda::GetDefaultStream()));
   }
-  handle_wrapper(const handle_wrapper&) = delete;
-  handle_wrapper& operator=(const handle_wrapper&) = delete;
-  ~handle_wrapper() {
+  cudnnHandleWrapper(const cudnnHandleWrapper&) = delete;
+  cudnnHandleWrapper& operator=(const cudnnHandleWrapper&) = delete;
+  ~cudnnHandleWrapper() {
     if (handle != nullptr) { cudnnDestroy(handle); }
   }
 };
 
+struct cudnnStreamManager
+{
+  cudnnStreamManager(cudnnHandle_t handle, cudaStream_t stream)
+    : handle_(handle)
+  {
+    LBANN_CHECK_CUDNN(cudnnGetStream(handle_, old_stream_));
+    LBANN_CHECK_CUDNN(cudnnSetStream(handle_, stream));
+  }
+
+  ~cudnnStreamManager()
+  {
+    try {
+      LBANN_CHECK_CUDNN(cudnnSetStream(handle_, old_stream_));
+    }
+    catch (std::exception const& e) {
+      std::cerr << "Caught error in ~cudnnStreamManager().\n\n  e.what(): "
+                << e.what() << "\n\nCalling std::terminate()."
+                << std::endl;
+      std::terminate();
+    }
+    catch (...) {
+      std::cerr << "Caught unknown error in ~cudnnStreamManager().\n\n"
+                << "Calling std::terminate()."
+                << std::endl;
+      std::terminate();
+    }
+  }
+  cudnnHandle_t handle_;
+  cudaStream_t old_stream_;
+};// struct cudnnStreamManager
+
 /** Global instance of cuDNN handle. */
-std::unique_ptr<handle_wrapper> handle_instance;
+std::unique_ptr<cudnnHandleWrapper> handle_instance;
 
 } // namespace
 
 void initialize() {
-  handle_instance.reset(new handle_wrapper());
+  handle_instance.reset(new cudnnHandleWrapper());
 }
 
 void destroy() {
@@ -78,9 +107,9 @@ void destroy() {
 
 cudnnHandle_t& get_handle() {
   if (!handle_instance) { initialize(); }
-  CHECK_CUDA(cudaSetDevice(El::GPUManager::Device()));
-  CHECK_CUDNN(cudnnSetStream(handle_instance->handle,
-                             El::GPUManager::Stream()));
+  LBANN_CHECK_CUDNN(
+    cudnnSetStream(handle_instance->handle,
+                   hydrogen::cuda::GetDefaultStream()));
   return handle_instance->handle;
 }
 
@@ -92,7 +121,6 @@ template <typename TensorDataType>
 void set_tensor_desc(cudnnTensorDescriptor_t& desc,
                      std::vector<int> dims,
                      std::vector<int> strides) {
-  std::stringstream err;
   if (dims.empty()) {
     LBANN_ERROR("attempted to set cuDNN tensor descriptor with no dimensions");
   }
@@ -107,6 +135,8 @@ void set_tensor_desc(cudnnTensorDescriptor_t& desc,
   }
 
 #ifdef LBANN_DEBUG
+  std::stringstream err;
+
   // Check that dimensions and strides are valid
   if (strides.size() != dims.size()) {
     err << "attempted to set cuDNN tensor descriptor "
@@ -155,9 +185,9 @@ void set_tensor_desc(cudnnTensorDescriptor_t& desc,
     strides.push_back(1);
   }
   if (desc == nullptr) {
-    CHECK_CUDNN(cudnnCreateTensorDescriptor(&desc));
+    LBANN_CHECK_CUDNN(cudnnCreateTensorDescriptor(&desc));
   }
-  CHECK_CUDNN(cudnnSetTensorNdDescriptor(desc,
+  LBANN_CHECK_CUDNN(cudnnSetTensorNdDescriptor(desc,
                                          get_data_type<TensorDataType>(),
                                          dims.size(),
                                          dims.data(),
@@ -170,10 +200,10 @@ void copy_tensor_desc(const cudnnTensorDescriptor_t& src,
 
     // Create or destroy descriptor if needed
     if(src != nullptr && dst == nullptr) {
-        CHECK_CUDNN(cudnnCreateTensorDescriptor(&dst));
+        LBANN_CHECK_CUDNN(cudnnCreateTensorDescriptor(&dst));
     }
     else if(src == nullptr && dst != nullptr) {
-        CHECK_CUDNN(cudnnDestroyTensorDescriptor(dst));
+        LBANN_CHECK_CUDNN(cudnnDestroyTensorDescriptor(dst));
         dst = nullptr;
     }
 
@@ -181,20 +211,20 @@ void copy_tensor_desc(const cudnnTensorDescriptor_t& src,
     if(src != nullptr) {
         cudnnDataType_t data_type;
         int num_dims;
-        CHECK_CUDNN(cudnnGetTensorNdDescriptor(src,
+        LBANN_CHECK_CUDNN(cudnnGetTensorNdDescriptor(src,
                                                0,
                                                &data_type,
                                                &num_dims,
                                                nullptr,
                                                nullptr));
         std::vector<int> dims(num_dims), strides(num_dims);
-        CHECK_CUDNN(cudnnGetTensorNdDescriptor(src,
+        LBANN_CHECK_CUDNN(cudnnGetTensorNdDescriptor(src,
                                                num_dims,
                                                &data_type,
                                                &num_dims,
                                                dims.data(),
                                                strides.data()));
-        CHECK_CUDNN(cudnnSetTensorNdDescriptor(dst,
+        LBANN_CHECK_CUDNN(cudnnSetTensorNdDescriptor(dst,
                                                data_type,
                                                num_dims,
                                                dims.data(),
@@ -208,10 +238,10 @@ void copy_activation_desc(const cudnnActivationDescriptor_t& src,
 
     // Create or destroy descriptor if needed
     if(src != nullptr && dst == nullptr) {
-        CHECK_CUDNN(cudnnCreateActivationDescriptor(&dst));
+        LBANN_CHECK_CUDNN(cudnnCreateActivationDescriptor(&dst));
     }
     else if(src == nullptr && dst != nullptr) {
-        CHECK_CUDNN(cudnnDestroyActivationDescriptor(dst));
+        LBANN_CHECK_CUDNN(cudnnDestroyActivationDescriptor(dst));
         dst = nullptr;
     }
 
@@ -220,11 +250,11 @@ void copy_activation_desc(const cudnnActivationDescriptor_t& src,
         cudnnActivationMode_t mode;
         cudnnNanPropagation_t nan_propagation;
         double relu_ceiling;
-        CHECK_CUDNN(cudnnGetActivationDescriptor(src,
+        LBANN_CHECK_CUDNN(cudnnGetActivationDescriptor(src,
                                                  &mode,
                                                  &nan_propagation,
                                                  &relu_ceiling));
-        CHECK_CUDNN(cudnnSetActivationDescriptor(dst,
+        LBANN_CHECK_CUDNN(cudnnSetActivationDescriptor(dst,
                                                  mode,
                                                  nan_propagation,
                                                  relu_ceiling));
@@ -324,13 +354,13 @@ void layer_tensor_manager<TensorDataType>::set_num_parents(int num_parents) {
 #endif // LBANN_DEBUG
   for (size_t i = num_parents; i < m_prev_activations.size(); ++i) {
     if (m_prev_activations[i] != nullptr) {
-      CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_prev_activations[i]));
+      LBANN_CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_prev_activations[i]));
       m_prev_activations[i] = nullptr;
     }
   }
   for (size_t i = num_parents; i < m_error_signals.size(); ++i) {
     if (m_error_signals[i] != nullptr) {
-      CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_error_signals[i]));
+      LBANN_CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_error_signals[i]));
       m_error_signals[i] = nullptr;
     }
   }
@@ -345,13 +375,13 @@ void layer_tensor_manager<TensorDataType>::set_num_children(int num_children) {
 #endif // LBANN_DEBUG
   for (size_t i = num_children; i < m_activations.size(); ++i) {
     if (m_activations[i] != nullptr) {
-      CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_activations[i]));
+      LBANN_CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_activations[i]));
       m_activations[i] = nullptr;
     }
   }
   for (size_t i = num_children; i < m_prev_error_signals.size(); ++i) {
     if (m_prev_error_signals[i] != nullptr) {
-      CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_prev_error_signals[i]));
+      LBANN_CHECK_CUDNN(cudnnDestroyTensorDescriptor(m_prev_error_signals[i]));
       m_prev_error_signals[i] = nullptr;
     }
   }
@@ -640,11 +670,11 @@ cudnnConvolutionFwdAlgo_t get_fwd_algo_heuristic(
   const cudnnTensorDescriptor_t& output_desc,
   size_t ws_size) {
   int num_algos;
-  CHECK_CUDNN(cudnnGetConvolutionForwardAlgorithmMaxCount(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionForwardAlgorithmMaxCount(
                 get_handle(), &num_algos));
   std::vector<cudnnConvolutionFwdAlgoPerf_t> perf_results(num_algos);
   int num_tested_algos;
-  CHECK_CUDNN(cudnnGetConvolutionForwardAlgorithm_v7(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionForwardAlgorithm_v7(
                 get_handle(), input_desc, kernel_desc, conv_desc, output_desc,
                 num_algos, &num_tested_algos, perf_results.data()));
   return find_best_heuristic_algorithm(perf_results, nondet_fwd_algos,
@@ -659,11 +689,11 @@ cudnnConvolutionBwdDataAlgo_t get_bwd_data_algo_heuristic(
   const cudnnTensorDescriptor_t& error_signal_desc,
   size_t ws_size) {
   int num_algos;
-  CHECK_CUDNN(cudnnGetConvolutionBackwardDataAlgorithmMaxCount(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionBackwardDataAlgorithmMaxCount(
                 get_handle(), &num_algos));
   std::vector<cudnnConvolutionBwdDataAlgoPerf_t> perf_results(num_algos);
   int num_tested_algos;
-  CHECK_CUDNN(cudnnGetConvolutionBackwardDataAlgorithm_v7(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionBackwardDataAlgorithm_v7(
                 get_handle(), kernel_desc, prev_error_signal_desc, conv_desc,
                 error_signal_desc, num_algos, &num_tested_algos,
                 perf_results.data()));
@@ -679,11 +709,11 @@ cudnnConvolutionBwdFilterAlgo_t get_bwd_filter_algo_heuristic(
   const cudnnFilterDescriptor_t& kernel_gradient_desc,
   size_t ws_size) {
   int num_algos;
-  CHECK_CUDNN(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
                 get_handle(), &num_algos));
   std::vector<cudnnConvolutionBwdFilterAlgoPerf_t> perf_results(num_algos);
   int num_tested_algos;
-  CHECK_CUDNN(cudnnGetConvolutionBackwardFilterAlgorithm_v7(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionBackwardFilterAlgorithm_v7(
                 get_handle(), input_desc, prev_error_signal_desc, conv_desc,
                 kernel_gradient_desc, num_algos, &num_tested_algos,
                 perf_results.data()));
@@ -705,13 +735,13 @@ cudnnConvolutionFwdAlgo_t get_fwd_algo_autotune(
   constexpr int num_trials = 3;
   constexpr int num_skip = 1;
   int num_algos;
-  CHECK_CUDNN(cudnnGetConvolutionForwardAlgorithmMaxCount(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionForwardAlgorithmMaxCount(
                 get_handle(), &num_algos));
   std::vector<cudnnConvolutionFwdAlgoPerf_t> perf_results_all;
   std::vector<cudnnConvolutionFwdAlgoPerf_t> perf_results(num_algos);
   for (int trial = 0; trial < num_trials + num_skip; ++trial) {
     int num_tested_algos;
-    CHECK_CUDNN(cudnnFindConvolutionForwardAlgorithmEx(
+    LBANN_CHECK_CUDNN(cudnnFindConvolutionForwardAlgorithmEx(
                   get_handle(), input_desc, input, kernel_desc, kernel,
                   conv_desc, output_desc, output, num_algos, &num_tested_algos,
                   perf_results.data(), ws, ws_size));
@@ -739,13 +769,13 @@ cudnnConvolutionBwdDataAlgo_t get_bwd_data_algo_autotune(
   constexpr int num_trials = 3;
   constexpr int num_skip = 1;
   int num_algos;
-  CHECK_CUDNN(cudnnGetConvolutionBackwardDataAlgorithmMaxCount(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionBackwardDataAlgorithmMaxCount(
                 get_handle(), &num_algos));
   std::vector<cudnnConvolutionBwdDataAlgoPerf_t> perf_results_all;
   std::vector<cudnnConvolutionBwdDataAlgoPerf_t> perf_results(num_algos);
   for (int trial = 0; trial < num_trials + num_skip; ++trial) {
     int num_tested_algos;
-    CHECK_CUDNN(cudnnFindConvolutionBackwardDataAlgorithmEx(
+    LBANN_CHECK_CUDNN(cudnnFindConvolutionBackwardDataAlgorithmEx(
                   get_handle(), kernel_desc, kernel,
                   prev_error_signal_desc, prev_error_signal,
                   conv_desc, error_signal_desc, error_signal, num_algos,
@@ -774,13 +804,13 @@ cudnnConvolutionBwdFilterAlgo_t get_bwd_filter_algo_autotune(
   constexpr int num_trials = 3;
   constexpr int num_skip = 1;
   int num_algos;
-  CHECK_CUDNN(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
+  LBANN_CHECK_CUDNN(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
                 get_handle(), &num_algos));
   std::vector<cudnnConvolutionBwdFilterAlgoPerf_t> perf_results_all;
   std::vector<cudnnConvolutionBwdFilterAlgoPerf_t> perf_results(num_algos);
   for (int trial = 0; trial < num_trials + num_skip; ++trial) {
     int num_tested_algos;
-    CHECK_CUDNN(cudnnFindConvolutionBackwardFilterAlgorithmEx(
+    LBANN_CHECK_CUDNN(cudnnFindConvolutionBackwardFilterAlgorithmEx(
                   get_handle(), input_desc, input,
                   prev_error_signal_desc, prev_error_signal,
                   conv_desc, kernel_gradient_desc, kernel_gradient, num_algos,
@@ -900,6 +930,240 @@ cudnnMathType_t get_default_convolution_math_type() noexcept
 #include "lbann/macros/instantiate.hpp"
 
 } // namespace cudnn
+
+namespace dnn_primitive {
+
+PoolingMode_t get_pooling_mode(pooling_mode pm)
+{
+  switch (pm)
+  {
+  case pooling_mode::MAX:
+#ifdef LBANN_DETERMINISTIC
+    return CUDNN_POOLING_MAX;
+#else
+    return CUDNN_POOLING_MAX_DETERMINISTIC;
+#endif // LBANN_DETERMINISTIC
+  case pooling_mode::AVERAGE:
+    return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
+  case pooling_mode::AVERAGE_NO_PAD:
+    return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+  default:
+    LBANN_ERROR("Unknown pooling mode type.");
+  }
+  return CUDNN_POOLING_MAX; // Silence sub-par compiler warnings.
+}
+
+LRNDescriptor_t create_lrn_descriptor()
+{
+  LRNDescriptor_t lrnd;
+  LBANN_CHECK_CUDNN(cudnnCreateLRNDescriptor(&lrnd));
+  return lrnd;
+}
+
+void destroy_lrn_descriptor(LRNDescriptor_t& lrnd)
+{
+  if (lrnd) {
+    LBANN_CHECK_CUDNN(cudnnDestroyLRNDescriptor(&lrnd));
+    lrnd = nullptr;
+  }
+}
+
+void set_lrn_descriptor(LRNDescriptor_t& lrnd,
+                        unsigned const lrnN,
+                        double const lrnAlpha,
+                        double const lrnBeta,
+                        double const lrnK)
+{
+  LBANN_CHECK_CUDNN(
+    cudnnSetLRNDescriptor(lrnd, lrnN, lrnAlpha, lrnBeta, lrnK));
+}
+
+void copy_lrn_descriptor(LRNDescriptor_t const& src, LRNDescriptor_t& dst)
+{
+  unsigned n;
+  double alpha, beta, k;
+  CHECK_CUDNN(cudnnGetLRNDescriptor(src, &n, &alpha, &beta, &k));
+  set_lrn_descriptor(dst, n, alpha, beta, k);
+}
+
+template <typename T>
+void lrn_cross_channel_forward(
+  LRNDescriptor_t normDesc,
+  T const alpha,
+  TensorDescriptor_t const xDesc,
+  T const* x,
+  T const beta,
+  TensorDescriptor_t const yDesc,
+  T* y,
+  El::SyncInfo<El::Device::GPU> const& si)
+{
+  auto handle = cudnn::get_handle();
+  cudnnStreamManager mgr(handle, si.Stream());
+  auto alpha_scaling_type = El::To<ScalingParamType<T>>(alpha);
+  auto beta_scaling_type = El::To<ScalingParamType<T>>(beta);
+  LBANN_CHECK_CUDNN(
+    cudnnLRNCrossChannelForward(
+      handle, nromDesc,
+      CUDNN_LRN_CROSS_CHANNEL_DIM1,
+      &alpha_scaling_type, xDesc, x,
+      &beta_scaling_type, yDesc, y));
+}
+
+template <typename T>
+void lrn_cross_channel_backward(
+  LRNDescriptor_t normDesc,
+  T const alpha,
+  TensorDescriptor_t const yDesc,
+  T const* y,
+  TensorDescriptor_t const dyDesc,
+  T const* dy,
+  TensorDescriptor_t const xDesc,
+  T const* x,
+  T const beta,
+  TensorDescriptor_t const dxDesc,
+  T* dx,
+  El::SyncInfo<El::Device::GPU> const& si)
+{
+  auto handle = cudnn::get_handle();
+  cudnnStreamManager mgr(handle, si.Stream());
+
+  auto alpha_scaling_type = El::To<ScalingParamType<T>>(alpha);
+  auto beta_scaling_type = El::To<ScalingParamType<T>>(beta);
+
+  LBANN_CHECK_CUDNN(
+    cudnnLRNCrossChannelBackward(handle,
+                                 normDesc,
+                                 CUDNN_LRN_CROSS_CHANNEL_DIM1,
+                                 &alpha_scaling_type,
+                                 yDesc, y, dyDesc, dy, xDesc,
+                                 &beta_scaling_type, dxDesc, dx));
+}
+
+PoolingDescriptor_t create_pooling_descriptor()
+{
+  PoolingDescriptor_t desc;
+  LBANN_CHECK_CUDNN(cudnnCreatePoolingDescriptor(&desc));
+  return desc;
+}
+
+void destroy_pooling_descriptor(PoolingDescriptor_t& pd)
+{
+  if (pd) {
+    LBANN_CHECK_CUDNN(cudnnDestroyPoolingDescriptor(&pd));
+    pd = nullptr;
+  }
+}
+
+void set_pooling_descriptor(PoolingDescriptor_t pd,
+                            PoolingMode mode,
+                            int dims,
+                            int const windowDimsA[],
+                            int const padA[],
+                            int const stridesA[])
+{
+  LBANN_CHECK_CUDNN(
+    cudnnSetPoolingNdDescriptor(
+      pd, get_native_pooling_mode(mode), CUDNN_PROPAGATE_NAN,
+      dims, windowDimsA, padA, stridesA));
+}
+
+/** @brief Copy pooling cuDNN descriptor. */
+void copy_pooling_descriptor(const cudnn::PoolingDescriptor_t& src,
+                             cudnn::PoolingDescriptor_t& dst) {
+
+  // Create or destroy descriptor if needed
+  if(src != nullptr && dst == nullptr) {
+    LBANN_CHECK_CUDNN(cudnnCreatePoolingDescriptor(&dst));
+  }
+  else if(src == nullptr && dst != nullptr) {
+    LBANN_CHECK_CUDNN(cudnnDestroyPoolingDescriptor(dst));
+    dst = nullptr;
+  }
+
+  // Copy descriptor data if needed
+  if(src != nullptr) {
+    cudnnPoolingMode_t mode;
+    cudnnNanPropagation_t nan_propagation;
+    int num_dims;
+    LBANN_CHECK_CUDNN(
+      cudnnGetPoolingNdDescriptor(src,
+                                  0,
+                                  &mode,
+                                  &nan_propagation,
+                                  &num_dims,
+                                  nullptr,
+                                  nullptr,
+                                  nullptr));
+    std::vector<int> dims(num_dims), pads(num_dims), strides(num_dims);
+    LBANN_CHECK_CUDNN(
+      cudnnGetPoolingNdDescriptor(src,
+                                  num_dims,
+                                  &mode,
+                                  &nan_propagation,
+                                  &num_dims,
+                                  dims.data(),
+                                  pads.data(),
+                                  strides.data()));
+    LBANN_CHECK_CUDNN(
+      cudnnSetPoolingNdDescriptor(dst,
+                                  mode,
+                                  nan_propagation,
+                                  num_dims,
+                                  dims.data(),
+                                  pads.data(),
+                                  strides.data()));
+  }
+}
+
+template <typename T>
+void pooling_forward(
+  PoolingDescriptor_t const poolingDesc,
+  T const alpha,
+  TensorDescriptor_t const xDesc,
+  T const* x,
+  T const beta,
+  TensorDescriptor_t const yDesc,
+  T* y,
+  El::SyncInfo<El::Device::GPU> const& si)
+{
+  auto handle = cudnn::get_handle();
+  cudnnStreamManager mgr(handle, si.Stream());
+  auto alpha_scaling_type = El::To<ScalingParamType<T>>(alpha);
+  auto beta_scaling_type = El::To<ScalingParamType<T>>(beta);
+  LBANN_CHECK_CUDNN(
+    cudnnPoolingForward(handle,
+                        poolingDesc,
+                        &alpha_scaling_type, xDesc, x,
+                        &beta_scaling_type, yDesc, y));
+}
+
+template <typename T>
+void pooling_backward(
+    PoolingDescriptor_t const poolingDesc,
+    T const alpha,
+    TensorDescriptor_t const yDesc,
+    T const* y,
+    TensorDescriptor_t const dyDesc,
+    T const* dy,
+    TensorDescriptor_t const xDesc,
+    T const* xData,
+    T const beta,
+    TensorDescriptor_t const dxDesc,
+    T* dx,
+    El::SyncInfo<El::Device::GPU> const& si)
+{
+  auto handle = cudnn::get_handle();
+  cudnnStreamManager mgr(handle, si.Stream());
+  auto alpha_scaling_type = El::To<ScalingParamType<T>>(alpha);
+  auto beta_scaling_type = El::To<ScalingParamType<T>>(beta);
+  LBANN_CHECK_CUDNN(
+    cudnnPoolingBackward(handle,
+                         poolingDesc,
+                         &alpha, yDesc, y, dyDesc, dy, xDesc, xData,
+                         &beta, dxDesc, dx));
+}
+
+}// namespace dnn_primitive
 } // namespace lbann
 
 #endif // LBANN_HAS_CUDNN

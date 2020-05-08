@@ -3,9 +3,6 @@ target_sources(lbann_cxx PRIVATE
   any.hpp
   argument_parser.hpp
   compiler_control.hpp
-  cublas.hpp
-  cuda.hpp
-  cudnn.hpp
   dataset.hpp
   description.hpp
   entrywise_operator.hpp

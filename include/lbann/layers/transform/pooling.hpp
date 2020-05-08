@@ -27,13 +27,15 @@
 #ifndef LBANN_LAYER_POOLING_HPP_INCLUDED
 #define LBANN_LAYER_POOLING_HPP_INCLUDED
 
+#include "lbann/layers/transform/transform.hpp"
+#include "lbann/utils/distconv.hpp"
+#include "lbann/utils/gpu/dnn_primitives.hpp"
+#include "lbann/utils/exception.hpp"
+#include "lbann/utils/gpu/helpers.hpp"
+#include "lbann/utils/im2col.hpp"
+
 #include <utility>
 #include <vector>
-#include "lbann/layers/transform/transform.hpp"
-#include "lbann/utils/cudnn.hpp"
-#include "lbann/utils/exception.hpp"
-#include "lbann/utils/im2col.hpp"
-#include "lbann/utils/distconv.hpp"
 
 namespace lbann {
 
@@ -68,7 +70,7 @@ class pooling_layer : public transform_layer<TensorDataType> {
 private:
 
   /** Pooling mode. */
-  pool_mode m_pool_mode;
+  pooling_mode m_pool_mode;
 
   /** Pooling window dimensions. */
   std::vector<int> m_pool_dims;
@@ -86,12 +88,12 @@ private:
    */
   std::vector<int> m_max_pool_indices;
 
-#ifdef LBANN_HAS_CUDNN
+#if defined LBANN_HAS_GPU_DNN_PRIMITIVES
   /** Pooling descriptor. */
-  cudnnPoolingDescriptor_t m_pooling_cudnn_desc;
-  /** Tensor cuDNN descriptors. */
-  cudnn::data_parallel_layer_tensor_manager<TensorDataType> m_tensors_cudnn_desc;
-#endif // LBANN_HAS_CUDNN
+  dnn_primitive::PoolingDescriptor_t m_pooling_dnn_desc;
+  /** Tensor DNN descriptors. */
+  dnn_primitive::data_parallel_layer_tensor_manager<TensorDataType> m_tensors_dnn_desc;
+#endif // defined LBANN_HAS_GPU_DNN_PRIMITIVES
 
   friend class unpooling_layer<TensorDataType, T_layout, Dev>;
 
@@ -102,7 +104,7 @@ public:
                 int pool_dim,
                 int pad,
                 int stride,
-                pool_mode mode)
+                pooling_mode mode)
     : pooling_layer(comm,
                     num_data_dims,
                     std::vector<int>(num_data_dims, pool_dim),
@@ -115,16 +117,16 @@ public:
                 std::vector<int> pool_dims,
                 std::vector<int> pads,
                 std::vector<int> strides,
-                pool_mode mode)
+                pooling_mode mode)
     : transform_layer<TensorDataType>(comm),
       m_pool_mode(mode),
       m_pool_dims(pool_dims),
       m_pads(pads),
       m_strides(strides)
-#ifdef LBANN_HAS_CUDNN
-    , m_pooling_cudnn_desc(nullptr),
-      m_tensors_cudnn_desc(this)
-#endif // LBANN_HAS_CUDNN
+#if defined LBANN_HAS_GPU_DNN_PRIMITIVES
+    , m_pooling_dnn_desc(nullptr),
+      m_tensors_dnn_desc(this)
+#endif // defined LBANN_HAS_GPU_DNN_PRIMITIVES
   {
     // Initialize input dimensions and pooling parameters
     m_pool_size = std::accumulate(m_pool_dims.begin(),
@@ -142,15 +144,17 @@ public:
       m_pads(other.m_pads),
       m_strides(other.m_strides),
       m_max_pool_indices(other.m_max_pool_indices)
-#ifdef LBANN_HAS_CUDNN
-    , m_pooling_cudnn_desc(nullptr),
-      m_tensors_cudnn_desc(other.m_tensors_cudnn_desc)
-#endif // LBANN_HAS_CUDNN
+#if defined LBANN_HAS_GPU_DNN_PRIMITIVES
+    , m_pooling_dnn_desc(nullptr),
+      m_tensors_dnn_desc(other.m_tensors_dnn_desc)
+#endif // defined LBANN_HAS_GPU_DNN_PRIMITIVES
   {
-#ifdef LBANN_HAS_CUDNN
-    copy_pooling_cudnn_desc(other.m_pooling_cudnn_desc, m_pooling_cudnn_desc);
-    m_tensors_cudnn_desc.set_layer(this);
-#endif // LBANN_HAS_CUDNN
+#if defined LBANN_HAS_GPU_DNN_PRIMITIVES
+    m_pooling_dnn_desc = dnn_primitive::create_pooling_descriptor();
+    dnn_primitive::copy_pooling_descriptor(
+      other.m_pooling_dnn_desc, m_pooling_dnn_desc);
+    m_tensors_dnn_desc.set_layer(this);
+#endif // defined LBANN_HAS_GPU_DNN_PRIMITIVES
   }
 
   pooling_layer& operator=(const pooling_layer& other){
@@ -161,20 +165,34 @@ public:
     m_pads = other.m_pads;
     m_strides = other.m_strides;
     m_max_pool_indices = other.m_max_pool_indices;
-#ifdef LBANN_HAS_CUDNN
-    copy_pooling_cudnn_desc(other.m_pooling_cudnn_desc, m_pooling_cudnn_desc);
-    m_tensors_cudnn_desc = other.m_tensors_cudnn_desc;
-    m_tensors_cudnn_desc.set_layer(this);
-#endif // LBANN_HAS_CUDNN
+#if defined LBANN_HAS_GPU_DNN_PRIMITIVES
+    if (!m_pooling_dnn_desc)
+      m_pooling_dnn_desc = dnn_primitive::create_pooling_descriptor();
+    dnn_primitive::copy_pooling_descriptor(
+      other.m_pooling_dnn_desc, m_pooling_dnn_desc);
+    m_tensors_dnn_desc = other.m_tensors_dnn_desc;
+    m_tensors_dnn_desc.set_layer(this);
+#endif // defined LBANN_HAS_GPU_DNN_PRIMITIVES
     return *this;
   }
 
   ~pooling_layer() {
-#ifdef LBANN_HAS_CUDNN
-    if (m_pooling_cudnn_desc != nullptr) {
-      cudnnDestroyPoolingDescriptor(m_pooling_cudnn_desc);
+#if defined LBANN_HAS_GPU_DNN_PRIMITIVES
+    try {
+      dnn_primitive::destroy_pooling_descriptor(m_pooling_dnn_desc);
     }
-#endif // LBANN_HAS_CUDNN
+    catch (std::exception const& e) {
+      std::cerr << "Caught error in ~pooling_layer().\n\n"
+                << "  e.what(): " << e.what() << "\n\n"
+                << "Calling std::terminate()." << std::endl;
+      std::terminate();
+    }
+    catch (...) {
+      std::cerr << "Caught unknown error in ~pooling_layer().\n\n"
+                << "Calling std::terminate()." << std::endl;
+      std::terminate();
+    }
+#endif // defined LBANN_HAS_GPU_DNN_PRIMITIVES
   }
 
   pooling_layer* copy() const override { return new pooling_layer(*this); }
@@ -190,10 +208,9 @@ public:
     ss.str(std::string{});
     ss.clear();
     switch (m_pool_mode) {
-    case pool_mode::max:            ss << "max";              break;
-    case pool_mode::average:        ss << "average";          break;
-    case pool_mode::average_no_pad: ss << "average (no pad)"; break;
-    case pool_mode::invalid:
+    case pooling_mode::MAX:            ss << "max";              break;
+    case pooling_mode::AVERAGE:        ss << "average";          break;
+    case pooling_mode::AVERAGE_NO_PAD: ss << "average (no pad)"; break;
     default:
       ss << "invalid";
     }
@@ -245,39 +262,21 @@ protected:
   /// Initialize GPU objects
   void setup_gpu() override {
     transform_layer<TensorDataType>::setup_gpu();
-#ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+#ifndef LBANN_HAS_GPU_DNN_PRIMITIVES
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
 
     // Set pooling descriptor
-    cudnnPoolingMode_t cudnn_pool_mode;
-    switch(m_pool_mode) {
-    case pool_mode::max:
-    #ifndef LBANN_DETERMINISTIC
-      cudnn_pool_mode = CUDNN_POOLING_MAX; break;
-    #else
-      cudnn_pool_mode = CUDNN_POOLING_MAX_DETERMINISTIC; break;
-    #endif
-    case pool_mode::average:
-      cudnn_pool_mode = CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING; break;
-    case pool_mode::average_no_pad:
-      cudnn_pool_mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING; break;
-    default:
-      std::stringstream err;
-      err << "no GPU implementation for pooling mode " << static_cast<int>(m_pool_mode);
-      LBANN_ERROR(err.str());
-      cudnn_pool_mode = CUDNN_POOLING_MAX;
-    }
-    CHECK_CUDNN(cudnnCreatePoolingDescriptor(&m_pooling_cudnn_desc));
-    CHECK_CUDNN(cudnnSetPoolingNdDescriptor(m_pooling_cudnn_desc,
-                                            cudnn_pool_mode,
-                                            CUDNN_PROPAGATE_NAN,
-                                            m_pool_dims.size(),
-                                            m_pool_dims.data(),
-                                            m_pads.data(),
-                                            m_strides.data()));
+    m_pooling_dnn_desc = dnn_primitive::create_pooling_descriptor();
+    dnn_primitive::set_pooling_descriptor(
+      m_pooling_dnn_desc,
+      m_pool_mode,
+      m_pool_dims.size(),
+      m_pool_dims.data(),
+      m_pads.data(),
+      m_strides.data());
 
-#endif // #ifndef LBANN_HAS_CUDNN
+#endif // #ifndef LBANN_HAS_GPU_DNN_PRIMITIVES
   }
 
   void fp_compute() override {
@@ -288,7 +287,7 @@ protected:
         return;
       }
 #endif // LBANN_HAS_DISTCONV
-      fp_compute_cudnn();
+      fp_compute_dnn_primitive();
     } else {
       fp_compute_im2col();
     }
@@ -302,7 +301,7 @@ protected:
         return;
       }
 #endif // LBANN_HAS_DISTCONV
-      bp_compute_cudnn();
+      bp_compute_dnn_primitive();
     } else {
       bp_compute_im2col();
     }
@@ -310,66 +309,65 @@ protected:
 
 private:
 
-  /// Pooling forward propagation with cuDNN
-  void fp_compute_cudnn() {
-#ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+  /// Pooling forward propagation with DNN primitive library
+  void fp_compute_dnn_primitive() {
+#ifndef LBANN_HAS_GPU_DNN_PRIMITIVES
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
-    using ScalingType = cudnn::ScalingParamType<TensorDataType>;
     const auto& local_input = this->get_local_prev_activations();
     auto& local_output = this->get_local_activations();
+    auto multisync = El::MakeMultiSync(gpu::get_sync_info(local_output),
+                                       gpu::get_sync_info(local_input));
     if (local_input.Height() > 0 && local_input.Width() > 0) {
-      const auto zero = El::TypeTraits<ScalingType>::Zero();
-      const auto one = El::TypeTraits<ScalingType>::One();
-      CHECK_CUDNN(cudnnPoolingForward(cudnn::get_handle(),
-                                      m_pooling_cudnn_desc,
-                                      &one,
-                                      m_tensors_cudnn_desc.get_prev_activations(),
-                                      local_input.LockedBuffer(),
-                                      &zero,
-                                      m_tensors_cudnn_desc.get_activations(),
-                                      local_output.Buffer()));
+      dnn_primitive::pooling_forward(m_pooling_dnn_desc,
+                                     El::TypeTraits<TensorDataType>::One(),
+                                     m_tensors_dnn_desc.get_prev_activations(),
+                                     local_input.LockedBuffer(),
+                                     El::TypeTraits<TensorDataType>::Zero(),
+                                     m_tensors_dnn_desc.get_activations(),
+                                     local_output.Buffer(),
+                                     multisync);
     }
-#endif // #ifndef LBANN_HAS_CUDNN
+#endif // #ifndef LBANN_HAS_GPU_DNN_PRIMITIVES
   }
 
-  /// Pooling backward propagation with cuDNN
-  void bp_compute_cudnn() {
-#ifndef LBANN_HAS_CUDNN
-    LBANN_ERROR("cuDNN not detected");
+  /// Pooling backward propagation with DNN primitive library
+  void bp_compute_dnn_primitive() {
+#ifndef LBANN_HAS_GPU_DNN_PRIMITIVES
+    LBANN_ERROR("No known GPU-based DNN primitives library available.");
 #else
-    using ScalingType = cudnn::ScalingParamType<TensorDataType>;
     const auto& local_input = this->get_local_prev_activations();
     const auto& local_output = this->get_local_activations();
     const auto& local_gradient_wrt_output = this->get_local_prev_error_signals();
     auto& local_gradient_wrt_input = this->get_local_error_signals();
     if (local_input.Height() > 0 && local_input.Width() > 0) {
-
-      // Useful constants
-      const auto one = El::TypeTraits<ScalingType>::One();
-      const auto zero = El::TypeTraits<ScalingType>::Zero();
+      auto multisync = El::MakeMultiSync(
+        gpu::get_sync_info(local_gradient_wrt_input),
+        gpu::get_sync_info(local_gradient_wrt_output),
+        gpu::get_sync_info(local_output),
+        gpu::get_sync_info(local_input));
 
       // Perform backprop on GPU
-      CHECK_CUDNN(cudnnPoolingBackward(cudnn::get_handle(),
-                                       m_pooling_cudnn_desc,
-                                       &one,
-                                       m_tensors_cudnn_desc.get_activations(),
-                                       local_output.LockedBuffer(),
-                                       m_tensors_cudnn_desc.get_prev_error_signals(),
-                                       local_gradient_wrt_output.LockedBuffer(),
-                                       m_tensors_cudnn_desc.get_prev_activations(),
-                                       local_input.LockedBuffer(),
-                                       &zero,
-                                       m_tensors_cudnn_desc.get_error_signals(),
-                                       local_gradient_wrt_input.Buffer()));
-
+      dnn_primitive::pooling_backward(
+        m_pooling_dnn_desc,
+        El::TypeTraits<TensorDataType>::One(),
+        m_tensors_dnn_desc.get_activations(),
+        local_output.LockedBuffer(),
+        m_tensors_dnn_desc.get_prev_error_signals(),
+        local_gradient_wrt_output.LockedBuffer(),
+        m_tensors_dnn_desc.get_prev_activations(),
+        local_input.LockedBuffer(),
+        El::TypeTraits<TensorDataType>::Zero(),
+        m_tensors_dnn_desc.get_error_signals(),
+        local_gradient_wrt_input.Buffer(),
+        multisync);
     }
-#endif // #ifndef LBANN_HAS_CUDNN
+#endif // #ifndef LBANN_HAS_GPU_DNN_PRIMITIVES
   }
 
   /// Pooling forward propagation with im2col
   void fp_compute_im2col() {
-    if(m_pool_mode != pool_mode::max && m_pool_mode != pool_mode::average) {
+    if(m_pool_mode != pooling_mode::MAX && m_pool_mode != pooling_mode::AVERAGE) {
       LBANN_ERROR("CPU pooling layer only supports max and average pooling");
     }
 
@@ -384,7 +382,7 @@ private:
     const int num_per_output_channel = this->get_output_size() / num_channels;
 
     // Initialize max pool indices if needed
-    if(m_pool_mode == pool_mode::max) {
+    if(m_pool_mode == pooling_mode::MAX) {
       m_max_pool_indices.assign(this->get_output_size() * local_width, 0);
     }
 
@@ -407,7 +405,7 @@ private:
              m_pool_dims.data(),
              m_strides.data());
 
-      if(m_pool_mode == pool_mode::max) {
+      if(m_pool_mode == pooling_mode::MAX) {
         // Apply max pooling
         TensorDataType *output_buffer = local_output.Buffer(0, sample);
         int *indices_buffer = &m_max_pool_indices[sample * this->get_output_size()];
@@ -431,7 +429,7 @@ private:
         }
       }
 
-      if(m_pool_mode == pool_mode::average) {
+      if(m_pool_mode == pooling_mode::AVERAGE) {
         // Apply average pooling
         TensorDataType *output_buffer = local_output.Buffer(0, sample);
         LBANN_OMP_PARALLEL_FOR
@@ -457,7 +455,7 @@ private:
   /// Pooling forward propagation with im2col
   void bp_compute_im2col() {
     using CPUMatType = El::Matrix<TensorDataType, El::Device::CPU>;
-    if(m_pool_mode != pool_mode::max && m_pool_mode != pool_mode::average) {
+    if(m_pool_mode != pooling_mode::MAX && m_pool_mode != pooling_mode::AVERAGE) {
       LBANN_ERROR("CPU pooling layer only supports max and average pooling");
     }
 
@@ -479,7 +477,7 @@ private:
     for(int sample = 0; sample < local_width; ++sample) {
 
       // Compute gradient w.r.t. im2col matrix for max pooling
-      if(m_pool_mode == pool_mode::max) {
+      if(m_pool_mode == pooling_mode::MAX) {
 
         // Clear im2col matrix
         El::Zero(im2col_mat);
@@ -504,7 +502,7 @@ private:
       }
 
       // Compute gradient w.r.t. im2col matrix for average pooling
-      if(m_pool_mode == pool_mode::average) {
+      if(m_pool_mode == pooling_mode::AVERAGE) {
         const TensorDataType *gradient_wrt_output_buffer
           = local_gradient_wrt_output.LockedBuffer(0, sample);
         LBANN_OMP_PARALLEL_FOR
@@ -549,54 +547,6 @@ private:
   pooling_distconv_adapter<TensorDataType, T_layout, Dev>& get_distconv_adapter() override;
   const pooling_distconv_adapter<TensorDataType, T_layout, Dev>& get_distconv_adapter() const override;
 #endif // LBANN_HAS_DISTCONV
-
-#ifdef LBANN_HAS_CUDNN
-  /** Copy pooling cuDNN descriptor. */
-  static void copy_pooling_cudnn_desc(const cudnnPoolingDescriptor_t& src,
-                                      cudnnPoolingDescriptor_t& dst) {
-
-    // Create or destroy descriptor if needed
-    if(src != nullptr && dst == nullptr) {
-        CHECK_CUDNN(cudnnCreatePoolingDescriptor(&dst));
-    }
-    else if(src == nullptr && dst != nullptr) {
-        CHECK_CUDNN(cudnnDestroyPoolingDescriptor(dst));
-        dst = nullptr;
-    }
-
-    // Copy descriptor data if needed
-    if(src != nullptr) {
-        cudnnPoolingMode_t mode;
-        cudnnNanPropagation_t nan_propagation;
-        int num_dims;
-        CHECK_CUDNN(cudnnGetPoolingNdDescriptor(src,
-                                                0,
-                                                &mode,
-                                                &nan_propagation,
-                                                &num_dims,
-                                                nullptr,
-                                                nullptr,
-                                                nullptr));
-        std::vector<int> dims(num_dims), pads(num_dims), strides(num_dims);
-        CHECK_CUDNN(cudnnGetPoolingNdDescriptor(src,
-                                                num_dims,
-                                                &mode,
-                                                &nan_propagation,
-                                                &num_dims,
-                                                dims.data(),
-                                                pads.data(),
-                                                strides.data()));
-        CHECK_CUDNN(cudnnSetPoolingNdDescriptor(dst,
-                                                mode,
-                                                nan_propagation,
-                                                num_dims,
-                                                dims.data(),
-                                                pads.data(),
-                                                strides.data()));
-    }
-
-  }
-#endif // LBANN_HAS_CUDNN
 
 };
 
@@ -729,11 +679,11 @@ setup_layer(size_t workspace_capacity) {
 
   std::string mode;
   switch(l.m_pool_mode) {
-    case pool_mode::max:
+    case pooling_mode::MAX:
       mode = "MAX"; break;
-    case pool_mode::average:
+    case pooling_mode::AVERAGE:
       mode = "AVERAGE"; break;
-    case pool_mode::average_no_pad:
+    case pooling_mode::AVERAGE_NO_PAD:
       mode = "AVERAGE_NO_PAD"; break;
     default:
       LBANN_ERROR("pooling_layer: no DISTCONV implementation for pooling mode");

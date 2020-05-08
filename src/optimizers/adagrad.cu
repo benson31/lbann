@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/optimizers/adagrad.hpp"
-#include "lbann/utils/gpu_lib.hpp"
+#include "lbann/utils/gpu/helpers.hpp"
 
 namespace lbann {
 
@@ -75,7 +75,6 @@ void adagrad<TensorDataType>::step_compute_gpu(AbsDistMatrixType& values,
 
     constexpr size_t block_size = 256;
     const size_t grid_size = (local_size + block_size - 1) / block_size;
-    auto&& stream = El::GPUManager::Stream();
     hydrogen::gpu::LaunchKernel(
       adagrad_kernel<TensorDataType>,
       grid_size, block_size, 0, multisync,

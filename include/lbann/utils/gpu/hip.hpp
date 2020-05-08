@@ -164,11 +164,21 @@ void apply_entrywise_binary_operator(
 
 /** @brief Array with fixed type and size. */
 template <typename T, size_t N>
-struct array {
+struct array
+{
   T vals[N];
-  __host__ __device__ __forceinline__ size_t size() const;
-  __host__ __device__ __forceinline__ T& operator[](size_t i);
-  __host__ __device__ __forceinline__ const T& operator[](size_t i) const;
+  __host__ __device__ __forceinline__ size_t size() const noexcept
+  {
+    return N;
+  }
+  __host__ __device__ __forceinline__ T& operator[](size_t i) noexcept
+  {
+    return vals[i];
+  }
+  __host__ __device__ __forceinline__ const T& operator[](size_t i) const noexcept
+  {
+    return vals[i];
+  }
 };
 
 namespace thrust {

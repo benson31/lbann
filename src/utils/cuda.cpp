@@ -24,24 +24,25 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "lbann/utils/cuda.hpp"
+#include "lbann/utils/gpu/cuda.hpp"
+#include "lbann/utils/gpu/event_wrapper.hpp"
 
 #ifdef LBANN_HAS_GPU
 
 namespace lbann {
-namespace cuda {
+namespace gpu {
 
 ////////////////////////////////////////////////////////////
 // CUDA event wrapper
 ////////////////////////////////////////////////////////////
 
 event_wrapper::event_wrapper() : m_event(nullptr), m_stream(0) {
-  CHECK_CUDA(cudaEventCreateWithFlags(&m_event, cudaEventDisableTiming));
+  LBANN_CHECK_CUDA(cudaEventCreateWithFlags(&m_event, cudaEventDisableTiming));
 }
 
 event_wrapper::event_wrapper(const event_wrapper& other)
   : m_event(nullptr), m_stream(other.m_stream) {
-  CHECK_CUDA(cudaEventCreateWithFlags(&m_event, cudaEventDisableTiming));
+  LBANN_CHECK_CUDA(cudaEventCreateWithFlags(&m_event, cudaEventDisableTiming));
   if (!other.query()) { record(m_stream); }
 }
 
@@ -57,7 +58,7 @@ event_wrapper::~event_wrapper() {
 
 void event_wrapper::record(cudaStream_t stream) {
   m_stream = stream;
-  CHECK_CUDA(cudaEventRecord(m_event, m_stream));
+  LBANN_CHECK_CUDA(cudaEventRecord(m_event, m_stream));
 }
 
 bool event_wrapper::query() const {
@@ -66,18 +67,18 @@ bool event_wrapper::query() const {
   case cudaSuccess:       return true;
   case cudaErrorNotReady: return false;
   default:
-    CHECK_CUDA(status);
+    LBANN_CHECK_CUDA(status);
     return false;
   }
 }
 
 void event_wrapper::synchronize() {
-  CHECK_CUDA(cudaEventSynchronize(m_event));
+  LBANN_CHECK_CUDA(cudaEventSynchronize(m_event));
 }
 
 cudaEvent_t& event_wrapper::get_event() { return m_event; }
 
-} // namespace cuda
+} // namespace gpu
 } // namespace lbann
 
 #endif // LBANN_HAS_GPU
