@@ -77,10 +77,10 @@ data_type_weights<TensorDataType>::data_type_weights(const WeightsType& other)
 
   // Deep copies
   m_values.reset(other.m_values ? other.m_values->Copy() : nullptr);
-  m_initializer.reset(other.m_initializer ?
-                      other.m_initializer->copy() : nullptr);
-  m_optimizer.reset(other.m_optimizer ?
-                    other.m_optimizer->copy() : nullptr);
+  m_initializer = (other.m_initializer
+                   ? other.m_initializer->clone() : nullptr);
+  m_optimizer = (other.m_optimizer
+                 ? other.m_optimizer->clone() : nullptr);
   if (m_optimizer != nullptr) {
     m_optimizer->set_weights(this);
   }
@@ -93,10 +93,10 @@ auto data_type_weights<TensorDataType>::operator=(const WeightsType& other) -> W
 
   // Deep copies
   m_values.reset(other.m_values ? other.m_values->Copy() : nullptr);
-  m_initializer.reset(other.m_initializer ?
-                      other.m_initializer->copy() : nullptr);
-  m_optimizer.reset(other.m_optimizer ?
-                    other.m_optimizer->copy() : nullptr);
+  m_initializer = (other.m_initializer
+                   ? other.m_initializer->clone() : nullptr);
+  m_optimizer = (other.m_optimizer
+                 ? other.m_optimizer->clone() : nullptr);
   if (m_optimizer != nullptr) {
     m_optimizer->set_weights(this);
   }
