@@ -28,6 +28,7 @@
 
 // Headers for NVCC
 #ifdef __CUDACC__
+#include <El.hpp>
 #ifdef HYDROGEN_HAVE_CUB
 #include "cub/block/block_reduce.cuh"
 #endif // HYDROGEN_HAVE_CUB

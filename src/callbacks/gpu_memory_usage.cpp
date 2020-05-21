@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lbann/callbacks/gpu_memory_usage.hpp"
+#include "lbann/utils/gpu/cuda.hpp"
+
 #include <iomanip>
 #include <sstream>
 

@@ -168,7 +168,7 @@ public:
   using layer_type = data_type_layer<TensorDataType>;
 public:
   LayerTensorManager(const layer_type* l = nullptr);
-  virtual ~LayerTensorManager();
+  virtual ~LayerTensorManager() = default;
 
   /** @brief Get the layer being managed. */
   const layer_type& get_layer() const noexcept { return *m_layer; }
@@ -205,6 +205,7 @@ protected:
     ~SafeTensorDescriptionManager();
     operator tensor_desc_type& () { return tensor_desc_; }
     operator tensor_desc_type const& () const { return tensor_desc_; }
+    void reset();
     tensor_desc_type tensor_desc_ = nullptr;
   };// struct SafeTensorDescriptionManager
 

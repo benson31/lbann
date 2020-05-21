@@ -25,9 +25,13 @@ target_sources(lbann_cxx PRIVATE
   summary.cpp
   system_info.cpp
   trainer_file_utils.cpp
-)
+  )
 
-if (LBANN_HAS_CUDNN)
+if (LBANN_HAS_GPU)
+  add_subdirectory(gpu)
+endif ()
+
+if (LBANN_HAS_CUDNN OR LBANN_HAS_MIOPEN)
   target_sources(lbann_cxx PRIVATE
     cudnn.cpp
     )
