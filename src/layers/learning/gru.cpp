@@ -422,7 +422,7 @@ void fp_compute_impl(
   input_desc.set(data_type, mini_batch_size, input_size, 1);
   output_desc.set(data_type, mini_batch_size, hidden_size, 1);
   hidden_desc.set(data_type, 1, mini_batch_size, hidden_size);
-  std::vector<cudnnTensorDescriptor_t>
+  std::vector<cudnn::BackendHandleType<cudnn::TensorDescriptor>>
     input_desc_list(sequence_length, input_desc),
     output_desc_list(sequence_length, output_desc);
 
@@ -718,7 +718,7 @@ void bp_compute_impl(
   auto& input_desc = l.m_input_cudnn_desc;
   auto& output_desc = l.m_output_cudnn_desc;
   auto& hidden_desc = l.m_hidden_cudnn_desc;
-  std::vector<cudnnTensorDescriptor_t>
+  std::vector<cudnn::BackendHandleType<cudnn::TensorDescriptor>>
     input_desc_list(sequence_length, input_desc),
     output_desc_list(sequence_length, output_desc);
 
