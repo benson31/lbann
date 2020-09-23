@@ -207,7 +207,8 @@ void gru_layer<TensorDataType, Layout, Device>::setup_gpu() {
   // RNN descriptor
   size_t dropout_state_size;
   CHECK_CUDNN(cudnnDropoutGetStatesSize(handle, &dropout_state_size));
-  cudnn::DropoutDescriptor dropout_desc(0.f, nullptr, dropout_state_size, 0);
+  cudnn::DropoutDescriptor dropout_desc;
+  dropout_desc.set(0.f, nullptr, dropout_state_size, 0);
   m_rnn_cudnn_desc.set(
     m_hidden_size,
     1,  // num_layers
