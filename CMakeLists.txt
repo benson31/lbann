@@ -147,6 +147,10 @@ option(LBANN_WARNINGS_AS_ERRORS
   "Build with warnings promoted to errors." OFF)
 mark_as_advanced(LBANN_WARNINGS_AS_ERRORS)
 
+option(LBANN_WITH_CODE_COVERAGE
+  "Enable code coverage instrumentation. Requires GCC or Clang."
+  OFF)
+
 #
 # The datatype option is not binary
 #
@@ -553,6 +557,11 @@ endif (LBANN_WITH_CONDUIT)
 find_package(Boost QUIET)
 set(LBANN_HAS_BOOST ${Boost_FOUND})
 
+if (LBANN_WITH_CODE_COVERAGE)
+  include(LBANNCodeCoverage)
+  add_custom_target(coverage)
+endif ()
+
 if (LBANN_WITH_UNIT_TESTING)
   find_package(Catch2 2.0.0 CONFIG QUIET
     HINTS ${CATCH2_DIR} $ENV{CATCH2_DIR} ${CATCH_DIR} $ENV{CATCH_DIR}
@@ -667,6 +676,11 @@ if (LBANN_HAS_FFTW AND LBANN_HAS_CUDA)
   target_compile_options(lbann PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>)
 endif (LBANN_HAS_FFTW AND LBANN_HAS_CUDA)
+
+if (LBANN_HAS_CODE_COVERAGE)
+  message(STATUS "Adding code coverage flags to LBANN")
+  target_link_libraries(lbann PRIVATE lbann_coverage_flags)
+endif ()
 
 # Fix the -g issue with Clang on OSX
 if (APPLE)

@@ -20,7 +20,6 @@
 
 struct foo
 {
-  foo() : foo(0, 0.0) {}
   foo(int x, double y)
     : x_(x), y_(y)
   {}

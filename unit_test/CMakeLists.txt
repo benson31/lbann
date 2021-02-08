@@ -18,5 +18,13 @@ add_executable(mpi-catch-tests
 target_link_libraries(mpi-catch-tests
   PRIVATE unit_test_utilities lbann Catch2::Catch2)
 
+message(STATUS "Pickles")
+
+if (LBANN_HAS_CODE_COVERAGE)
+  message(STATUS "Adding Catch test Code Coverage")
+  add_code_coverage(seq-catch-tests coverage)
+  add_code_coverage(mpi-catch-tests coverage)
+endif ()
+
 # TODO: Some "magical" way to automatically run tests if a parallel
 # environment is detected at CTest time
