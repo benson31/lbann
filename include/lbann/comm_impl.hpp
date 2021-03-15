@@ -28,8 +28,13 @@
 #define LBANN_COMM_HPP_IMPL_INCLUDED
 
 #include "lbann/comm.hpp"
+#include <mpi.h>
 
 namespace lbann {
+namespace Al {
+// Implement here so CUDA files have a better chance of being able to avoid it.
+struct request;
+} // namespace Al
 
 /// World broadcast of a scalar.
 template <typename T> void lbann_comm::world_broadcast(int root, T& val) const
@@ -715,26 +720,30 @@ template <typename T>
 void lbann_comm::nb_allreduce(T* data,
                               const int count,
                               const El::mpi::Comm& c,
-                              Al::request& req,
+                              Al::request& req_wrapper,
                               const El::mpi::Op op) const
 {
   m_bytes_sent += count * sizeof(T);
 #ifdef LBANN_HAS_ALUMINUM
-  req.mpi_req = Al::mpi_null_req;
-  ::Al::NonblockingAllreduce<::Al::MPIBackend>(
+  using BackendT = ::Al::MPIBackend;
+  using RequestT = typename BackendT::req_type;
+  auto& req = req_wrapper.m_req.emplace<RequestT>();
+  ::Al::NonblockingAllreduce<BackendT>(
     data,
     count,
     mpi_op_to_al_op(op),
-    c.template GetComm<::Al::MPIBackend>(El::SyncInfo<El::Device::CPU>{}),
-    req.mpi_req);
+    c.template GetComm<BackendT>(El::SyncInfo<El::Device::CPU>{}),
+    req);
 #else
+  using RequestT = MPI_Request;
+  auto& req = req_wrapper.m_req.emplace<RequestT>(MPI_REQUEST_NULL);
   MPI_Iallreduce(MPI_IN_PLACE,
                  data,
                  count,
                  El::mpi::TypeMap<T>(),
                  op.op,
                  c.GetMPIComm(),
-                 &(req.raw_mpi_req));
+                 &(req));
 #endif // LBANN_HAS_ALUMINUM
   m_bytes_received += count * sizeof(T) * (El::mpi::Size(c) - 1);
 }

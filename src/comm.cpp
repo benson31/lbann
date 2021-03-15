@@ -154,27 +154,20 @@ template <typename BackendT> struct BackendTag
 };
 
 #if defined(LBANN_HAS_GPU) && defined(LBANN_HAS_ALUMINUM)
-auto GetRequest(Al::request& r, BackendTag<Al::dummy_backend>) ->
-  typename Al::dummy_backend::req_type
+// This will set the variant to use the given request type.
+template <typename BackendT>
+auto GetRequest(Al::request& r, BackendTag<BackendT>) ->
+  typename BackendT::req_type&
 {
-  return Al::dummy_backend::null_req;
+  using RequestT = typename BackendT::req_type;
+  return r.m_req.emplace<RequestT>();
 }
 
-auto GetRequest(Al::request& r, BackendTag<::Al::MPIBackend>) ->
-  typename ::Al::MPIBackend::req_type&
-{
-  return r.mpi_req;
-}
 void UpdateRequest(typename ::Al::MPIBackend::req_type&,
                    El::SyncInfo<El::Device::CPU> const&) noexcept
 {}
 
 #ifdef AL_HAS_NCCL
-auto GetRequest(Al::request& r, BackendTag<::Al::NCCLBackend>) noexcept ->
-  typename ::Al::NCCLBackend::req_type&
-{
-  return r.nccl_req;
-}
 void UpdateRequest(typename ::Al::NCCLBackend::req_type& req,
                    El::SyncInfo<El::Device::GPU> const& si) noexcept
 {
@@ -184,12 +177,15 @@ void UpdateRequest(typename ::Al::NCCLBackend::req_type& req,
 #endif // AL_HAS_NCCL
 
 #ifdef AL_HAS_MPI_CUDA
-auto GetRequest(Al::request& r, BackendTag<::Al::MPICUDABackend>) noexcept ->
-  typename ::Al::MPICUDABackend::req_type&
-{
-  return r.mpicuda_req;
-}
 void UpdateRequest(typename ::Al::MPICUDABackend::req_type& req,
+                   El::SyncInfo<El::Device::GPU> const& si) noexcept
+{
+  if (req)
+    req->orig_stream = si.Stream();
+}
+#endif // AL_HAS_MPI_CUDA
+#ifdef AL_HAS_HOST_TRANSFER
+void UpdateRequest(typename ::Al::HostTransferBackend::req_type& req,
                    El::SyncInfo<El::Device::GPU> const& si) noexcept
 {
   if (req)
@@ -219,10 +215,11 @@ void allreduce_impl(El::Matrix<T, D>& m,
 template <typename T>
 void nb_allreduce_impl(El::Matrix<T, El::Device::CPU>& m,
                        const El::mpi::Comm& c,
-                       Al::request& req,
+                       Al::request& req_wrapper,
                        El::mpi::Op const& op)
 {
   if (m.Height() == m.LDim() || m.Width() == 1) {
+    auto& req = req_wrapper.m_req.emplace<MPI_Request>(MPI_REQUEST_NULL);
     auto const count = m.Height() * m.Width();
     MPI_Iallreduce(MPI_IN_PLACE,
                    m.Buffer(),
@@ -230,7 +227,7 @@ void nb_allreduce_impl(El::Matrix<T, El::Device::CPU>& m,
                    El::mpi::TypeMap<T>(),
                    op.op,
                    c.GetMPIComm(),
-                   &(req.raw_mpi_req));
+                   &(req));
   }
   else {
     return El::AllReduce(m, c, op);
@@ -445,24 +442,41 @@ void lbann_comm::nb_allreduce(El::AbstractDistMatrix<TensorDataType>& m,
 void lbann_comm::wait(Al::request& req) const
 {
 #ifdef LBANN_HAS_ALUMINUM
-  if (req.mpi_req != Al::mpi_null_req) {
-    ::Al::Wait<::Al::MPIBackend>(req.mpi_req);
+  using AlMPIRequestT = typename ::Al::MPIBackend::req_type;
+  if (auto* mpi_backend_req = std::get_if<AlMPIRequestT>(&(req.m_req))) {
+    ::Al::Wait<::Al::MPIBackend>(*mpi_backend_req);
+    return;
   }
 #ifdef AL_HAS_NCCL
-  if (req.nccl_req != Al::nccl_null_req) {
+  using AlNCCLRequestT = typename ::Al::NCCLBackend::req_type;
+  if (auto* nccl_backend_req = std::get_if<AlNCCLRequestT>(&(req.m_req))) {
     // Note this does not block the host.
-    ::Al::Wait<::Al::NCCLBackend>(req.nccl_req);
+    ::Al::Wait<::Al::NCCLBackend>(*nccl_backend_req);
+    return;
   }
 #endif // AL_HAS_NCCL
 #ifdef AL_HAS_MPI_CUDA
-  if (req.mpicuda_req != Al::mpicuda_null_req) {
+  using AlMPICUDARequestT = typename ::Al::MPICUDABackend::req_type;
+  if (auto* mpicuda_backend_req =
+        std::get_if<AlMPICUDARequestT>(&(req.m_req))) {
     // Note this does not block the host.
-    ::Al::Wait<::Al::MPICUDABackend>(req.mpicuda_req);
+    ::Al::Wait<::Al::MPICUDABackend>(*mpicuda_backend_req);
+    return;
   }
 #endif // AL_HAS_MPI_CUDA
+#ifdef AL_HAS_HOST_TRANSFER
+  using AlHostXferRequestT = typename ::Al::HostTransferBackend::req_type;
+  if (auto* host_xfer_backend_req =
+        std::get_if<AlHostXferRequestT>(&(req.m_req))) {
+    // Note this does not block the host.
+    ::Al::Wait<::Al::HostTransferBackend>(*host_xfer_backend_req);
+    return;
+  }
+#endif // AL_HAS_NCCL
 #endif // LBANN_HAS_ALUMINUM
-  if (req.raw_mpi_req != MPI_REQUEST_NULL) {
-    MPI_Wait(&(req.raw_mpi_req), MPI_STATUS_IGNORE);;
+  if (auto* mpi_req = std::get_if<MPI_Request>(&(req.m_req))) {
+    MPI_Wait(mpi_req, MPI_STATUS_IGNORE);
+    return; // not needed, but symmetry and all that...
   }
 }
 

@@ -40,6 +40,7 @@
 
 #include <map>
 #include <typeindex>
+#include <variant>
 #include <vector>
 
 namespace lbann {
@@ -51,51 +52,29 @@ namespace lbann {
 
 namespace Al {
 
-/** Dummy Aluminum backend. */
-class dummy_backend
-{
-public:
-  using req_type = int;
-  static constexpr req_type null_req = 0;
-};
-
-// Define aliases for Aluminum backends
-#ifdef LBANN_HAS_ALUMINUM
-using mpi_backend = ::Al::MPIBackend;
-#else
-using mpi_backend = lbann::Al::dummy_backend;
-#endif // LBANN_HAS_ALUMINUM
-using mpi_req_type = mpi_backend::req_type;
-static const mpi_req_type mpi_null_req = mpi_backend::null_req;
-/// @todo MPI-CUDA backend
-#if defined(LBANN_HAS_ALUMINUM) && defined(AL_HAS_NCCL)
-using nccl_backend = ::Al::NCCLBackend;
-// LBANN does its own synchronization on this.
-#else
-using nccl_backend = lbann::Al::dummy_backend;
-#endif // defined(LBANN_HAS_ALUMINUM) && defined(AL_HAS_NCCL)
-using nccl_req_type = nccl_backend::req_type;
-static const nccl_req_type nccl_null_req = nccl_backend::null_req;
-#if defined(LBANN_HAS_ALUMINUM) && defined(AL_HAS_MPI_CUDA)
-using mpicuda_backend = ::Al::MPICUDABackend;
-#else
-using mpicuda_backend = lbann::Al::dummy_backend;
-#endif // defined(LBANN_HAS_ALUMINUM) && defined(AL_HAS_MPI_CUDA)
-#if defined(LBANN_HAS_ALUMINUM) && defined(AL_HAS_HOST_TRANSFER)
-using hosttransfer_backend = ::Al::HostTransferBackend;
-#else
-using hosttransfer_backend = lbann::Al::dummy_backend;
-#endif // defined(LBANN_HAS_ALUMINUM) && defined(AL_HAS_HOST_TRANSFER)
-using mpicuda_req_type = mpicuda_backend::req_type;
-static const mpicuda_req_type mpicuda_null_req = mpicuda_backend::null_req;
-
-/** Wrapper for Aluminum non-blocking routine requests. */
+/** @brief A request for non-blocking communication.
+ *
+ *  Unfortunately, there's a name-dependency here, so a simple typedef
+ *  around the std::variant won't work. And we aren't fully moved to
+ *  CUDA 11 yet, so we cannot guarantee universal C++17 support.
+*/
 struct request
 {
-  mpi_req_type mpi_req = mpi_null_req;
-  nccl_req_type nccl_req = nccl_null_req;
-  mpicuda_req_type mpicuda_req = mpicuda_null_req;
-  MPI_Request raw_mpi_req = MPI_REQUEST_NULL;
+  using RequestVariantType = std::variant <
+#if defined (LBANN_HAS_ALUMINUM)
+    ::Al::MPIBackend::req_type, // Always enabled in Aluminum
+#if defined (AL_HAS_NCCL)
+    ::Al::NCCLBackend::req_type,
+#endif // defined (AL_HAS_NCCL)
+#if defined (AL_HAS_MPI_CUDA)
+    ::Al::MPICUDABackend::req_type,
+#endif // defined (AL_HAS_MPI_CUDA)
+#if defined (AL_HAS_HOST_TRANSFER)
+    ::Al::HostTransferBackend::req_type,
+#endif // defined (AL_HAS_HOST_TRANSFER)
+#endif // defined (LBANN_HAS_ALUMINUM)
+    MPI_Request>;
+  RequestVariantType m_req;
 };
 
 } // namespace Al
