@@ -29,12 +29,30 @@
 
 #include "lbann/comm.hpp"
 #include <mpi.h>
+#include <variant>
 
 namespace lbann {
+#ifndef __CUDACC__
 namespace Al {
-// Implement here so CUDA files have a better chance of being able to avoid it.
-struct request;
+struct request::request_impl {
+  using RequestVariantType = std::variant <
+#if defined (LBANN_HAS_ALUMINUM)
+    ::Al::MPIBackend::req_type, // Always enabled in Aluminum
+#if defined (AL_HAS_NCCL)
+    ::Al::NCCLBackend::req_type,
+#endif // defined (AL_HAS_NCCL)
+#if defined (AL_HAS_MPI_CUDA)
+    ::Al::MPICUDABackend::req_type,
+#endif // defined (AL_HAS_MPI_CUDA)
+#if defined (AL_HAS_HOST_TRANSFER)
+    ::Al::HostTransferBackend::req_type,
+#endif // defined (AL_HAS_HOST_TRANSFER)
+#endif // defined (LBANN_HAS_ALUMINUM)
+    MPI_Request>;
+  RequestVariantType m_req;
+};// struct request_impl
 } // namespace Al
+#endif // __CUDACC__
 
 /// World broadcast of a scalar.
 template <typename T> void lbann_comm::world_broadcast(int root, T& val) const
@@ -711,6 +729,8 @@ void lbann_comm::allreduce(T* const data,
 #endif
   m_bytes_received += count * sizeof(T) * (size_c - 1);
 }
+
+#ifndef __CUDACC__
 /** Non-blocking in-place scalar-array allreduce.
  *  If LBANN has not been built with Aluminum, then this calls a blocking
  *  allreduce.
@@ -727,7 +747,7 @@ void lbann_comm::nb_allreduce(T* data,
 #ifdef LBANN_HAS_ALUMINUM
   using BackendT = ::Al::MPIBackend;
   using RequestT = typename BackendT::req_type;
-  auto& req = req_wrapper.m_req.emplace<RequestT>();
+  auto& req = req_wrapper().m_req.emplace<RequestT>();
   ::Al::NonblockingAllreduce<BackendT>(
     data,
     count,
@@ -736,7 +756,7 @@ void lbann_comm::nb_allreduce(T* data,
     req);
 #else
   using RequestT = MPI_Request;
-  auto& req = req_wrapper.m_req.emplace<RequestT>(MPI_REQUEST_NULL);
+  auto& req = req_wrapper().m_req.emplace<RequestT>(MPI_REQUEST_NULL);
   MPI_Iallreduce(MPI_IN_PLACE,
                  data,
                  count,
@@ -747,6 +767,7 @@ void lbann_comm::nb_allreduce(T* data,
 #endif // LBANN_HAS_ALUMINUM
   m_bytes_received += count * sizeof(T) * (El::mpi::Size(c) - 1);
 }
+#endif // __CUDACC__
 
 /** Wait for a all non-blocking requests to complete. */
 template <typename T>

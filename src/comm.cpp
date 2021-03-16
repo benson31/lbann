@@ -33,6 +33,7 @@
 #include "lbann/utils/timer.hpp"
 #include "mpi.h"
 #include "omp.h"
+#include <memory>
 #include <sstream>
 #include <thread>
 
@@ -56,6 +57,12 @@ namespace lbann {
 #else
 #define checkMPI(status) status
 #endif // #ifdef LBANN_DEBUG
+
+namespace Al {
+request::request() : impl_{std::make_unique<request_impl>()} {}
+request::~request() noexcept {}
+request::request(request const&) : request{} {}
+} // namespace Al
 
 lbann_comm::lbann_comm(int ppm, El::mpi::Comm world)
   : m_world_comm(std::move(world)), m_grid(nullptr), m_procs_per_trainer(ppm),
@@ -160,7 +167,7 @@ auto GetRequest(Al::request& r, BackendTag<BackendT>) ->
   typename BackendT::req_type&
 {
   using RequestT = typename BackendT::req_type;
-  return r.m_req.emplace<RequestT>();
+  return r().m_req.emplace<RequestT>();
 }
 
 void UpdateRequest(typename ::Al::MPIBackend::req_type&,
@@ -219,7 +226,7 @@ void nb_allreduce_impl(El::Matrix<T, El::Device::CPU>& m,
                        El::mpi::Op const& op)
 {
   if (m.Height() == m.LDim() || m.Width() == 1) {
-    auto& req = req_wrapper.m_req.emplace<MPI_Request>(MPI_REQUEST_NULL);
+    auto& req = req_wrapper().m_req.emplace<MPI_Request>(MPI_REQUEST_NULL);
     auto const count = m.Height() * m.Width();
     MPI_Iallreduce(MPI_IN_PLACE,
                    m.Buffer(),
@@ -443,13 +450,13 @@ void lbann_comm::wait(Al::request& req) const
 {
 #ifdef LBANN_HAS_ALUMINUM
   using AlMPIRequestT = typename ::Al::MPIBackend::req_type;
-  if (auto* mpi_backend_req = std::get_if<AlMPIRequestT>(&(req.m_req))) {
+  if (auto* mpi_backend_req = std::get_if<AlMPIRequestT>(&(req().m_req))) {
     ::Al::Wait<::Al::MPIBackend>(*mpi_backend_req);
     return;
   }
 #ifdef AL_HAS_NCCL
   using AlNCCLRequestT = typename ::Al::NCCLBackend::req_type;
-  if (auto* nccl_backend_req = std::get_if<AlNCCLRequestT>(&(req.m_req))) {
+  if (auto* nccl_backend_req = std::get_if<AlNCCLRequestT>(&(req().m_req))) {
     // Note this does not block the host.
     ::Al::Wait<::Al::NCCLBackend>(*nccl_backend_req);
     return;
@@ -458,7 +465,7 @@ void lbann_comm::wait(Al::request& req) const
 #ifdef AL_HAS_MPI_CUDA
   using AlMPICUDARequestT = typename ::Al::MPICUDABackend::req_type;
   if (auto* mpicuda_backend_req =
-        std::get_if<AlMPICUDARequestT>(&(req.m_req))) {
+        std::get_if<AlMPICUDARequestT>(&(req().m_req))) {
     // Note this does not block the host.
     ::Al::Wait<::Al::MPICUDABackend>(*mpicuda_backend_req);
     return;
@@ -467,14 +474,14 @@ void lbann_comm::wait(Al::request& req) const
 #ifdef AL_HAS_HOST_TRANSFER
   using AlHostXferRequestT = typename ::Al::HostTransferBackend::req_type;
   if (auto* host_xfer_backend_req =
-        std::get_if<AlHostXferRequestT>(&(req.m_req))) {
+        std::get_if<AlHostXferRequestT>(&(req().m_req))) {
     // Note this does not block the host.
     ::Al::Wait<::Al::HostTransferBackend>(*host_xfer_backend_req);
     return;
   }
 #endif // AL_HAS_NCCL
 #endif // LBANN_HAS_ALUMINUM
-  if (auto* mpi_req = std::get_if<MPI_Request>(&(req.m_req))) {
+  if (auto* mpi_req = std::get_if<MPI_Request>(&(req().m_req))) {
     MPI_Wait(mpi_req, MPI_STATUS_IGNORE);
     return; // not needed, but symmetry and all that...
   }
@@ -482,28 +489,41 @@ void lbann_comm::wait(Al::request& req) const
 
 bool lbann_comm::test(Al::request& req) const
 {
-  bool req_test = true;
 #ifdef LBANN_HAS_ALUMINUM
-  if (req.mpi_req != Al::mpi_null_req) {
-    req_test = req_test && ::Al::Test<::Al::MPIBackend>(req.mpi_req);
+  using AlMPIRequestT = typename ::Al::MPIBackend::req_type;
+  if (auto* mpi_backend_req = std::get_if<AlMPIRequestT>(&(req().m_req))) {
+    return ::Al::Test<::Al::MPIBackend>(*mpi_backend_req);
   }
 #ifdef AL_HAS_NCCL
-  if (req.nccl_req != Al::nccl_null_req) {
-    req_test = req_test && ::Al::Test<::Al::NCCLBackend>(req.nccl_req);
+  using AlNCCLRequestT = typename ::Al::NCCLBackend::req_type;
+  if (auto* nccl_backend_req = std::get_if<AlNCCLRequestT>(&(req().m_req))) {
+    // Note this does not block the host.
+    return ::Al::Test<::Al::NCCLBackend>(*nccl_backend_req);
   }
 #endif // AL_HAS_NCCL
 #ifdef AL_HAS_MPI_CUDA
-  if (req.mpicuda_req != Al::mpicuda_null_req) {
-    req_test = req_test && ::Al::Test<::Al::MPICUDABackend>(req.mpicuda_req);
+  using AlMPICUDARequestT = typename ::Al::MPICUDABackend::req_type;
+  if (auto* mpicuda_backend_req =
+        std::get_if<AlMPICUDARequestT>(&(req().m_req))) {
+    // Note this does not block the host.
+    return ::Al::Test<::Al::MPICUDABackend>(*mpicuda_backend_req);
   }
 #endif // AL_HAS_MPI_CUDA
-#endif // LBANN_HAS_ALUMINUM
-  if (req.raw_mpi_req != MPI_REQUEST_NULL) {
-    int flag = 0;
-    MPI_Test(&(req.raw_mpi_req), &flag, MPI_STATUS_IGNORE);
-    req_test = flag;
+#ifdef AL_HAS_HOST_TRANSFER
+  using AlHostXferRequestT = typename ::Al::HostTransferBackend::req_type;
+  if (auto* host_xfer_backend_req =
+        std::get_if<AlHostXferRequestT>(&(req().m_req))) {
+    // Note this does not block the host.
+    return ::Al::Test<::Al::HostTransferBackend>(*host_xfer_backend_req);
   }
-  return req_test;
+#endif // AL_HAS_NCCL
+#endif // LBANN_HAS_ALUMINUM
+  if (auto* mpi_req = std::get_if<MPI_Request>(&(req().m_req))) {
+    int flag = -1;
+    MPI_Test(mpi_req, &flag, MPI_STATUS_IGNORE);
+    return (flag == 1 ? true : false);
+  }
+  return false;
 }
 
 void lbann_comm::intertrainer_broadcast_matrix(AbsMat& mat, int root) const

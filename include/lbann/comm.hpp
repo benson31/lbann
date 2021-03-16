@@ -28,6 +28,7 @@
 #define LBANN_COMM_HPP_INCLUDED
 
 #include "base.hpp"
+#include <memory>
 
 #ifdef LBANN_HAS_CUDA
 #include <cuda_runtime.h>
@@ -40,7 +41,6 @@
 
 #include <map>
 #include <typeindex>
-#include <variant>
 #include <vector>
 
 namespace lbann {
@@ -58,23 +58,19 @@ namespace Al {
  *  around the std::variant won't work. And we aren't fully moved to
  *  CUDA 11 yet, so we cannot guarantee universal C++17 support.
 */
-struct request
+class request
 {
-  using RequestVariantType = std::variant <
-#if defined (LBANN_HAS_ALUMINUM)
-    ::Al::MPIBackend::req_type, // Always enabled in Aluminum
-#if defined (AL_HAS_NCCL)
-    ::Al::NCCLBackend::req_type,
-#endif // defined (AL_HAS_NCCL)
-#if defined (AL_HAS_MPI_CUDA)
-    ::Al::MPICUDABackend::req_type,
-#endif // defined (AL_HAS_MPI_CUDA)
-#if defined (AL_HAS_HOST_TRANSFER)
-    ::Al::HostTransferBackend::req_type,
-#endif // defined (AL_HAS_HOST_TRANSFER)
-#endif // defined (LBANN_HAS_ALUMINUM)
-    MPI_Request>;
-  RequestVariantType m_req;
+  // Not actually PIMPL; just hiding GCC's broken STL from NVCC's
+  // overly fussy compiler.
+  struct request_impl;
+public:
+  request();
+  ~request() noexcept;
+  request(request const&);// hack
+  request(request&&) = default;
+  request_impl& operator()() { return *impl_; }
+private:
+  std::unique_ptr<request_impl> impl_;
 };
 
 } // namespace Al
