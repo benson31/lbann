@@ -36,6 +36,7 @@ namespace lbann {
 namespace Al {
 struct request::request_impl {
   using RequestVariantType = std::variant <
+    std::monostate,
 #if defined (LBANN_HAS_ALUMINUM)
     ::Al::MPIBackend::req_type, // Always enabled in Aluminum
 #if defined (AL_HAS_NCCL)

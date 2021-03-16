@@ -482,6 +482,8 @@ void lbann_comm::wait(Al::request& req) const
 #endif // AL_HAS_NCCL
 #endif // LBANN_HAS_ALUMINUM
   if (auto* mpi_req = std::get_if<MPI_Request>(&(req().m_req))) {
+    if (*mpi_req == MPI_REQUEST_NULL)
+      LBANN_ERROR("Request is NULL");
     MPI_Wait(mpi_req, MPI_STATUS_IGNORE);
     return; // not needed, but symmetry and all that...
   }
