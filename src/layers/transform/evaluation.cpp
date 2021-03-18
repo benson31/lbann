@@ -44,7 +44,7 @@ template <typename TensorDataType, typename EvalDataType>
 void fp_cpu(lbann_comm& comm,
             const El::AbstractDistMatrix<TensorDataType>& input,
             EvalDataType& value,
-            Al::request& req) {
+            Al::request& /*req*/) {
   const auto& local_input = input.LockedMatrix();
   const auto& local_height = local_input.Height();
   const auto& local_width = local_input.Width();
@@ -56,8 +56,7 @@ void fp_cpu(lbann_comm& comm,
       value += local_input(row, col);
     }
   }
-  value = value / mini_batch_size;
-  comm.nb_allreduce(&value, 1, input.DistComm(), req);
+  value = comm.allreduce(value / mini_batch_size, input.DistComm());
 }
 
 #ifdef LBANN_HAS_HALF
@@ -186,7 +185,7 @@ void fp_gpu(lbann_comm& comm,
 template <typename TensorDataType>
 EvalType abstract_evaluation_layer<TensorDataType>::get_value(bool scaled) {
   switch (this->get_device_allocation()) {
-  case El::Device::CPU: this->get_comm()->wait(m_allreduce_req); break;
+  case El::Device::CPU: break;
 #ifdef LBANN_HAS_GPU
   case El::Device::GPU: this->m_copy_event.synchronize(); break;
 #endif // LBANN_HAS_GPU
@@ -230,9 +229,9 @@ void abstract_evaluation_layer<TensorDataType>::setup_data(size_t max_mini_batch
 
 template <typename TensorDataType>
 void abstract_evaluation_layer<TensorDataType>::fp_compute() {
+  std::cout << "[" << getpid() << "] fp_compute (layer=" << this->get_name() << ")" << std::endl;
   switch (this->get_device_allocation()) {
   case El::Device::CPU:
-    this->get_comm()->wait(m_allreduce_req);
     fp_cpu(*this->get_comm(),
            this->get_prev_activations(),
            m_value(0, 0),
