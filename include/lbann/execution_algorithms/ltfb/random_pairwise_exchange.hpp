@@ -32,6 +32,8 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace lbann {
 namespace ltfb {
@@ -123,6 +125,18 @@ public:
                          metric_strategy winner_strategy,
                          std::unique_ptr<ExchangeStrategy> comm_algo);
 
+  /** @brief Constructor
+   *  @param[in] metrics The list of metric/strategy pairs. A metric
+   *             with each given name must exist in the model passed
+   *             to apply(). If the local model wins ALL of the metric
+   *             comparisons, it wins. Otherwise, the partner model
+   *             wins.
+   *  @param[in] comm_algo Algorithm for exchanging models.
+   */
+  RandomPairwiseExchange(
+    std::unordered_map<std::string, metric_strategy> metrics,
+    std::unique_ptr<ExchangeStrategy> comm_algo);
+
   ~RandomPairwiseExchange() = default;
   RandomPairwiseExchange(RandomPairwiseExchange const& other);
   ///@}
@@ -142,7 +156,7 @@ public:
 
 private:
   /** @brief Get the value of the given metric from the model. */
-  EvalType
+  std::unordered_map<std::string, EvalType>
   evaluate_model(model& m, ExecutionContext& ctxt, data_coordinator& dc) const;
   /** @brief Generate a new trainer partner from the comm. */
   El::Int get_partner_trainer(lbann_comm const& c) const noexcept;
@@ -156,16 +170,14 @@ private:
    *  @param[in] remote The metric output of the remote model.
    *  @returns true if the local model is favored.
    */
-  bool local_is_better(EvalType local, EvalType remote) const;
+  bool local_is_better(
+    std::unordered_map<std::string, EvalType> const& local_scores,
+    std::unordered_map<std::string, EvalType> const& partner_scores) const;
 
 private:
-  /** @brief Strategy to decide if the local or remote value is better. */
-  metric_strategy m_metric_strategy;
-  /** @brief The name of the metric to be used to evaluate a model.
-   *
-   *  A metric with the given name must exist in every model seen.
-   */
-  std::string m_metric_name;
+  /** @brief The list of metric/strategy pairs. */
+  std::unordered_map<std::string, metric_strategy> m_metrics;
+
   /** @brief The strategy for exchanging two models.
    *
    *  This is largely an implementation detail of moving models
