@@ -65,6 +65,9 @@ struct TypeToProtoDataType<fp16>
 };
 #endif // LBANN_HAS_GPU_FP16
 
+template <typename T>
+inline constexpr auto ProtoDataType = TypeToProtoDataType<T>::value;
+
 }// namespace proto
 }// namespace lbann
 #endif /* LBANN_PROTO_DATATYPE_HELPERS_HPP_INCLUDED */

@@ -24,7 +24,9 @@
 // permissions and limitations under the license.
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "lbann/base.hpp"
 #include "lbann/proto/factories.hpp"
+#include "lbann/proto/datatype_helpers.hpp"
 #include "lbann/proto/helpers.hpp"
 #include "lbann/utils/factory.hpp"
 #include "lbann/utils/typename.hpp"
@@ -110,7 +112,9 @@
 #include "lbann/data_coordinator/data_coordinator_metadata.hpp"
 #include "lbann/utils/peek_map.hpp"
 
+#include <datatype.pb.h>
 #include <layers.pb.h>
+#include <type_traits>
 
 #ifdef LBANN_HAS_DNN_LIB
 #include "lbann/utils/dnn_lib/helpers.hpp"
@@ -118,6 +122,13 @@
 
 namespace lbann {
 namespace proto {
+
+template <typename TensorDataType, data_layout Layout, El::Device Device>
+std::unique_ptr<Layer>
+construct_layer_legacy(lbann_comm* comm,
+                       int training_dr_linearized_data_size,
+                       int num_parallel_readers,
+                       const lbann_data::Layer& proto_layer);
 
 namespace {
 
@@ -309,7 +320,153 @@ factory_type const& get_layer_factory() noexcept
   return factory_mgr_.get();
 }
 
+template <typename T, lbann::data_layout L, El::Device D>
+std::unique_ptr<Layer>
+construct_layer_with_type(lbann_comm* comm,
+                          int training_dr_linearized_data_size,
+                          int num_parallel_readers,
+                          const lbann_data::Layer& proto_layer)
+{
+  auto const& factory = get_layer_factory<T, L, D>();
+  auto const& msg = helpers::get_oneof_message(proto_layer, "layer_type");
+
+  std::unique_ptr<Layer> l =
+    factory.create_object(msg.GetDescriptor()->name(), comm, proto_layer);
+  if (!l) {
+    if constexpr (std::is_same_v<T, DataType>) {
+      l = construct_layer_legacy<T, L, D>(
+        comm,
+        training_dr_linearized_data_size,
+        num_parallel_readers,
+        proto_layer);
+    }
+    else {
+      LBANN_ERROR("Currently, layers of type \"",
+                  msg.GetDescriptor()->name(),
+                  "\" are not constructible with any type other than the "
+                  "default DataType (\"", TypeName<DataType>(), "\").");
+    }
+  }
+  return l;
+}
+
+template <lbann::data_layout L, El::Device D>
+std::unique_ptr<Layer> construct_layer_with_layout(
+  lbann_comm* comm,
+  int training_dr_linearized_data_size,
+  int num_parallel_readers,
+  const lbann_data::Layer& proto_layer) {
+
+  switch (proto_layer.datatype())
+  {
+  case lbann_data::FLOAT:
+    return construct_layer_with_type<float, L, D>(
+      comm,
+      training_dr_linearized_data_size,
+      num_parallel_readers,
+      proto_layer);
+  case lbann_data::DOUBLE:
+    return construct_layer_with_type<double, L, D>(
+      comm,
+      training_dr_linearized_data_size,
+      num_parallel_readers,
+      proto_layer);
+  case lbann_data::FP16:
+#ifdef LBANN_HAS_HALF
+    if constexpr (D == El::Device::CPU) {
+      return construct_layer_with_type<cpu_fp16, L, D>(
+        comm,
+        training_dr_linearized_data_size,
+        num_parallel_readers,
+        proto_layer);
+    }
+#ifdef LBANN_HAS_GPU
+    else {
+      return construct_layer_with_type<fp16, L, D>(
+        comm,
+        training_dr_linearized_data_size,
+        num_parallel_readers,
+        proto_layer);
+    }
+#endif // LBANN_HAS_GPU
+#else
+    LBANN_ERROR("FP16 types not supported in this build of LBANN.");
+    break;
+#endif // LBANN_HAS_HALF
+  default:
+    LBANN_ERROR("Unknown datatype.");
+    break;
+  }
+  return nullptr;
+}
+
+template <El::Device D>
+std::unique_ptr<Layer> construct_layer_on_device(
+  lbann_comm* comm,
+  int training_dr_linearized_data_size,
+  int num_parallel_readers,
+  const lbann_data::Layer& proto_layer) {
+
+  const auto& layout_str = proto_layer.data_layout();
+  data_layout layout = (layout_str.empty()
+                        ? data_layout::DATA_PARALLEL
+                        : data_layout_from_string(layout_str));
+
+  switch (layout) {
+  case data_layout::MODEL_PARALLEL:
+    return construct_layer_with_layout<data_layout::MODEL_PARALLEL, D>(
+      comm,
+      training_dr_linearized_data_size,
+      num_parallel_readers,
+      proto_layer);
+  case data_layout::DATA_PARALLEL:
+    return construct_layer_with_layout<data_layout::DATA_PARALLEL, D>(
+      comm,
+      training_dr_linearized_data_size,
+      num_parallel_readers,
+      proto_layer);
+  case data_layout::invalid:
+  default:
+    LBANN_ERROR("Invalid data layout");
+  }
+  return nullptr;
+}
+
 } // namespace
+
+std::unique_ptr<Layer> construct_layer(
+  lbann_comm* comm,
+  int training_dr_linearized_data_size,
+  int num_parallel_readers,
+  bool disable_cuda,
+  const lbann_data::Layer& proto_layer) {
+
+  El::Device D = El::Device::CPU;
+#ifdef LBANN_HAS_GPU
+  // Input layers must be on CPU
+  if (!proto_layer.has_input() && !model_disable_gpus) {
+    const auto& device_str = proto_layer.device_allocation();
+    device = (device_str.empty()
+              ? El::Device::GPU
+              : device_from_string(device_str));
+  }
+#endif
+  switch (D) {
+  case El::Device::CPU:
+    return construct_layer_on_device<El::Device::CPU>(comm,
+                                                      training_dr_linearized_data_size,
+                                                      num_parallel_readers,
+                                                      proto_layer);
+#ifdef LBANN_HAS_GPU
+  case El::Device::GPU:
+    return construct_layer_on_device<El::Device::CPU>(comm,
+                                                      training_dr_linearized_data_size,
+                                                      num_parallel_readers,
+                                                      proto_layer);
+#endif // LBANN_HAS_GPU
+  }
+  return nullptr;
+}
 
 template <typename TensorDataType, data_layout Layout, El::Device Device>
 std::unique_ptr<Layer> construct_layer_legacy(
@@ -683,7 +840,7 @@ std::unique_ptr<Layer> construct_layer_legacy(
 }
 
 template <typename TensorDataType, data_layout Layout, El::Device Device>
-std::unique_ptr<Layer> construct_layer(
+std::unique_ptr<Layer> construct_layer_impl(
   lbann_comm* comm,
   int training_dr_linearized_data_size,
   int num_parallel_readers,
@@ -707,22 +864,22 @@ std::unique_ptr<Layer> construct_layer(
   return l;
 }
 
-// Template instantiation
-#define PROTO_DEVICE(T, Device) \
-  template std::unique_ptr<Layer> construct_layer<T, data_layout::DATA_PARALLEL, Device>(  \
-    lbann_comm* comm,                                                                      \
-    int training_dr_linearized_data_size,                                                  \
-    int num_parallel_readers,                                                              \
-    const lbann_data::Layer& proto_layer                                                   \
-  );                                                                                       \
-  template std::unique_ptr<Layer> construct_layer<T, data_layout::MODEL_PARALLEL, Device>( \
-    lbann_comm* comm,                                                                      \
-    int training_dr_linearized_data_size,                                                  \
-    int num_parallel_readers,                                                              \
-    const lbann_data::Layer& proto_layer                                                   \
-  )
+// // Template instantiation
+// #define PROTO_DEVICE(T, Device) \
+//   template std::unique_ptr<Layer> construct_layer<T, data_layout::DATA_PARALLEL, Device>(  \
+//     lbann_comm* comm,                                                                      \
+//     int training_dr_linearized_data_size,                                                  \
+//     int num_parallel_readers,                                                              \
+//     const lbann_data::Layer& proto_layer                                                   \
+//   );                                                                                       \
+//   template std::unique_ptr<Layer> construct_layer<T, data_layout::MODEL_PARALLEL, Device>( \
+//     lbann_comm* comm,                                                                      \
+//     int training_dr_linearized_data_size,                                                  \
+//     int num_parallel_readers,                                                              \
+//     const lbann_data::Layer& proto_layer                                                   \
+//   )
 
-#include "lbann/macros/instantiate_device.hpp"
+// #include "lbann/macros/instantiate_device.hpp"
 
 } // namespace proto
 } // namespace lbann
