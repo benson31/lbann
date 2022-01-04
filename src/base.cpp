@@ -159,6 +159,7 @@ std::unique_ptr<lbann_comm> initialize_lbann(int argc, char** argv)
 }
 
 void finalize_lbann(lbann_comm* comm) {
+  finalize_trainer();
 #ifdef LBANN_HAS_NVSHMEM
   nvshmem::finalize();
 #endif // LBANN_HAS_NVSHMEM

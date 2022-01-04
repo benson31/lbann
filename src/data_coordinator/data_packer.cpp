@@ -80,7 +80,6 @@ size_t data_packer::extract_data_field_from_sample(data_field_type data_field,
     LBANN_ERROR("m_data[", data_id, "] does not have a valid contiguous data pointer");
   }
 
-=======
   if (!sample.is_compact()) {
     //    sample.print();
     LBANN_WARNING("m_data[",  data_id, "] does not have a compact layout");
@@ -97,7 +96,6 @@ size_t data_packer::extract_data_field_from_sample(data_field_type data_field,
     LBANN_WARNING("m_data[", data_id, "] does not have a valid contiguous data pointer");
   }
 #endif
->>>>>>> 902770ca11c75607482e9a62fc1684dd76b86c14
   std::ostringstream ss;
   ss << sample.child(0).name() + "/" << data_field;
   if (!sample.has_path(ss.str())) {
