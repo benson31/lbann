@@ -85,6 +85,7 @@ auto mock_dr_metadata(std::vector<int> input_dims,
 std::unique_ptr<model>
 load_inference_model(lbann_comm* lc,
                      std::string cp_dir,
+                     std::vector<conduit::Node> &samples,
                      int mbs,
                      std::vector<int> input_dims,
                      std::vector<int> output_dims) {
@@ -95,6 +96,16 @@ load_inference_model(lbann_comm* lc,
   p.close_restart();
 
   lbann::generic_data_reader *reader = new conduit_data_reader();
+  reader->set_comm(lc);
+  auto data_store = new lbann::data_store_conduit(reader);
+  reader->set_data_store(data_store);
+  auto& ds = reader->get_data_store();
+  int data_id  = 0;
+  for (auto& node : samples) {
+    ds.set_conduit_node(data_id, node);
+    ++data_id;
+  }
+
   std::map<execution_mode, generic_data_reader *> data_readers =
     {{ execution_mode::inference, reader }};
   std::unique_ptr<thread_pool> io_thread_pool =
