@@ -70,15 +70,6 @@ size_t data_packer::extract_data_field_from_sample(data_field_type data_field,
     LBANN_ERROR("Unsupported number of samples per Conduit node");
   }
   std::string data_id = sample.child(0).name();
-  if (!sample.is_contiguous()) {
-    LBANN_ERROR("m_data[",  data_id, "] does not have a contiguous layout");
-  }
-  if (sample.data_ptr() == nullptr) {
-    LBANN_ERROR("m_data[", data_id, "] does not have a valid data pointer");
-  }
-  if (sample.contiguous_data_ptr() == nullptr) {
-    LBANN_ERROR("m_data[", data_id, "] does not have a valid contiguous data pointer");
-  }
 
   if (!sample.is_compact()) {
     //    sample.print();
